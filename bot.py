@@ -29,7 +29,7 @@ def save_products(products):
 def push_to_github():
     try:
         os.system('git add products.json')
-        os.system('git commit -m "Update products.json from bot"')
+        os.system('git commit -m "Auto update products from bot"')
         os.system('git push origin main')
         print("GitHub muvaffaqiyatli yangilandi!")
     except Exception as e:
