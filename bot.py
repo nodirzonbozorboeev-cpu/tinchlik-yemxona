@@ -7,7 +7,9 @@ TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE"
 bot = telebot.TeleBot(TOKEN)
 
 PRODUCTS_FILE = "products.json"
-ADMIN_ID = None 
+
+# Sizning aniq Telegram ID raqamingiz
+ADMIN_ID = 8630108906  
 
 # Har bir foydalanuvchining savatchasi va ma'lumotlarini saqlash
 user_carts = {}
@@ -38,13 +40,10 @@ def push_to_github():
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    global ADMIN_ID
-    ADMIN_ID = message.from_user.id
-    
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(KeyboardButton("📦 Mahsulotlar va Xarid qilish"), KeyboardButton("🛒 Savatcham"), KeyboardButton("➕ Mahsulot qo'shish (Admin)"))
     
-    bot.reply_to(message, f"Assalomu alaykum! Tinchlik Yemxona boshqaruv botiga xush kelibsiz.\n\nSizning ID raqamingiz saqlandi: `{ADMIN_ID}`", parse_mode="Markdown", reply_markup=markup)
+    bot.reply_to(message, "Assalomu alaykum! Tinchlik Yemxona boshqaruv botiga xush kelibsiz.", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: message.text == "📦 Mahsulotlar va Xarid qilish")
 def show_shop_products(message):
@@ -74,7 +73,6 @@ def handle_add_to_cart(call):
         user_carts[user_id].append(product)
         bot.answer_callback_query(call.id, f"✅ {product.get('name')} savatchaga qo'shildi!")
         
-        # Savatchani ko'rish va buyurtma berish tugmalari
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("🛍 Xaridni davom ettirish", callback_data="continue_shopping"))
         markup.add(InlineKeyboardButton("🚀 Buyurtmani rasmiylashtirish", callback_data="checkout"))
@@ -151,7 +149,6 @@ def get_customer_address(message):
     data = user_data[user_id]
     customer_name = message.from_user.first_name or "Mijoz"
     
-    # Buyurtma matnini shakllantirish
     order_details = ""
     total_price = 0
     for idx, p in enumerate(cart, 1):
@@ -160,23 +157,25 @@ def get_customer_address(message):
     
     order_details += f"\n💰 **Jami: {total_price} so'm**"
     
-    # Mijozga xabar
     bot.reply_to(message, "✅ Buyurtmangiz qabul qilindi! Tez orada operatorlarimiz siz bilan bog'lanishadi.")
     
-    # Adminga xabar yuborish
+    # Buyurtma doimo FAQAT SIZGA (ADMIN_ID ga) keladi
     if ADMIN_ID:
-        admin_text = f"🚨 **YANGI BUYURTMA (Bir nechta mahsulot)!**\n\n" \
+        admin_text = f"🚨 **YANGI BUYURTMA!**\n\n" \
                      f"👤 Mijoz: {customer_name}\n" \
                      f"📞 Tel: {data.get('phone')}\n" \
                      f"📍 Manzil: {address}\n\n" \
                      f"🛒 **Buyurtmalar:**\n{order_details}"
         bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
     
-    # Savatchani tozalash
     user_carts[user_id] = []
 
 @bot.message_handler(func=lambda message: message.text == "➕ Mahsulot qo'shish (Admin)")
 def ask_product_name(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "Kechirasiz, bu buyruq faqat admin uchun.")
+        return
+        
     msg = bot.reply_to(message, "Yangi mahsulot nomini kiriting (masalan: Bug'doy kepagi):")
     bot.register_next_step_handler(msg, process_product_name)
 
