@@ -1,0 +1,14 @@
+[
+    {
+        "id": 1,
+        "name": "Kepak Motabar 25kg",
+        "price": 85000,
+        "unit": "dona"
+    },
+    {
+        "id": 2,
+        "name": "bug'doy",
+        "price": 4500,
+        "unit": "dona"
+    }
+]
