@@ -7,11 +7,8 @@ TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE"
 bot = telebot.TeleBot(TOKEN)
 
 PRODUCTS_FILE = "products.json"
-
-# Sizning aniq Telegram ID raqamingiz
 ADMIN_ID = 8630108906  
 
-# Foydalanuvchi savatchasi va vaqtinchalik ma'lumotlarini saqlash
 user_carts = {}
 user_data = {}
 
@@ -32,7 +29,7 @@ def save_products(products):
 def push_to_github():
     try:
         os.system('git add products.json')
-        os.system('git commit -m "Auto update products.json from Telegram Bot"')
+        os.system('git commit -m "Update products.json from bot"')
         os.system('git push origin main')
         print("GitHub muvaffaqiyatli yangilandi!")
     except Exception as e:
@@ -42,24 +39,23 @@ def push_to_github():
 def send_welcome(message):
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(KeyboardButton("📦 Mahsulotlar va Xarid qilish"), KeyboardButton("🛒 Savatcham"), KeyboardButton("➕ Mahsulot qo'shish (Admin)"))
-    
     bot.reply_to(message, "Assalomu alaykum! Tinchlik Yemxona boshqaruv botiga xush kelibsiz.", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: message.text == "📦 Mahsulotlar va Xarid qilish")
 def show_shop_products(message):
     products = load_products()
     if not products:
-        bot.reply_to(message, "Hozircha sotuvda mahsulotlar mavjud emas.")
+        bot.reply_to(message, "Hozircha sotuvda mahsulotlar mavjud emas. Admin mahsulot qo'shishi kerak.")
         return
     
     markup = InlineKeyboardMarkup()
     for idx, p in enumerate(products):
-        unit_label = "kg" if p.get('unit') == 'kg' else "qop"
+        u_type = p.get('unit', 'kg')
+        unit_label = "kg" if u_type == 'kg' else "qop"
         markup.add(InlineKeyboardButton(f"🌾 {p.get('name')} - {p.get('price')} so'm ({unit_label})", callback_data=f"prod_{idx}"))
     
     bot.reply_to(message, "🛒 Kerakli mahsulotni tanlang:", reply_markup=markup)
 
-# Mahsulot bosilganda uning turiga qarab kilo yoki qop tanlash tugmalarini chiqarish
 @bot.callback_query_handler(func=lambda call: call.data.startswith('prod_'))
 def handle_product_select(call):
     idx = int(call.data.split('_')[1])
@@ -74,7 +70,6 @@ def handle_product_select(call):
         markup = InlineKeyboardMarkup(row_width=2)
         
         if unit == 'kg':
-            # Kilo uchun tugmalar
             markup.add(
                 InlineKeyboardButton("10 kg", callback_data=f"qty_{idx}_10"),
                 InlineKeyboardButton("25 kg", callback_data=f"qty_{idx}_25"),
@@ -85,7 +80,6 @@ def handle_product_select(call):
             )
             unit_text = "1 kg uchun narx"
         else:
-            # Qop uchun tugmalar
             markup.add(
                 InlineKeyboardButton("1 qop", callback_data=f"qty_{idx}_1"),
                 InlineKeyboardButton("2 qop", callback_data=f"qty_{idx}_2"),
@@ -106,7 +100,6 @@ def handle_product_select(call):
             reply_markup=markup
         )
 
-# Tanlangan miqdorni (kilo yoki qop) qabul qilib savatchaga qo'shish
 @bot.callback_query_handler(func=lambda call: call.data.startswith('qty_'))
 def handle_quantity_select(call):
     parts = call.data.split('_')
@@ -162,7 +155,8 @@ def back_to_products(call):
     
     markup = InlineKeyboardMarkup()
     for idx, p in enumerate(products):
-        unit_label = "kg" if p.get('unit') == 'kg' else "qop"
+        u_type = p.get('unit', 'kg')
+        unit_label = "kg" if u_type == 'kg' else "qop"
         markup.add(InlineKeyboardButton(f"🌾 {p.get('name')} - {p.get('price')} so'm ({unit_label})", callback_data=f"prod_{idx}"))
     
     bot.edit_message_text(
@@ -246,7 +240,6 @@ def get_customer_address(message):
     
     bot.reply_to(message, "✅ Buyurtmangiz qabul qilindi! Tez orada operatorlarimiz siz bilan bog'lanishadi.")
     
-    # Buyurtma doimo SIZGA keladi
     if ADMIN_ID:
         admin_text = f"🚨 **YANGI BUYURTMA!**\n\n" \
                      f"👤 Mijoz: {customer_name}\n" \
@@ -257,7 +250,7 @@ def get_customer_address(message):
     
     user_carts[user_id] = []
 
-# --- ADMIN QISMI: Mahsulot qo'shish ---
+# --- ADMIN QISMI ---
 @bot.message_handler(func=lambda message: message.text == "➕ Mahsulot qo'shish (Admin)")
 def ask_product_name(message):
     if message.from_user.id != ADMIN_ID:
@@ -269,17 +262,17 @@ def ask_product_name(message):
 
 def process_product_name(message):
     name = message.text
-    msg = bot.reply_to(message, f"Mahsulot nomi: *{name}*.\nEndi bu mahsulot **kiloga** sotiladimi yoki **qopga**?\n\nFaqatgina **kg** yoki **qop** deb yuboring:", parse_mode="Markdown")
+    msg = bot.reply_to(message, f"Mahsulot nomi: *{name}*.\nBu mahsulot **kiloga (kg)** sotiladimi yoki **qopga**?\n\nFaqatgina **kg** yoki **qop** deb yuboring:", parse_mode="Markdown")
     bot.register_next_step_handler(msg, process_product_unit, name)
 
 def process_product_unit(message, name):
     unit_input = message.text.strip().lower()
     if "qop" in unit_input:
-        unit = "bag"  # qop
+        unit = "bag"
     else:
-        unit = "kg"   # kilo
+        unit = "kg"
         
-    unit_name = "Qop (dona)" if unit == "bag" else "Kilogramm (kg)"
+    unit_name = "Qop" if unit == "bag" else "Kilogramm (kg)"
     msg = bot.reply_to(message, f"O'lchov birligi: *{unit_name}*.\nEndi 1 {('qop' if unit=='bag' else 'kg')} uchun **narxini** kiriting (faqat raqamda, masalan: 85000):", parse_mode="Markdown")
     bot.register_next_step_handler(msg, process_product_price, name, unit)
 
