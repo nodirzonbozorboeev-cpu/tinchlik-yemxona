@@ -11,7 +11,7 @@ PRODUCTS_FILE = "products.json"
 # Sizning aniq Telegram ID raqamingiz
 ADMIN_ID = 8630108906  
 
-# Har bir foydalanuvchining savatchasi va ma'lumotlarini saqlash
+# Foydalanuvchi savatchasi va vaqtinchalik ma'lumotlarini saqlash
 user_carts = {}
 user_data = {}
 
@@ -54,35 +54,101 @@ def show_shop_products(message):
     
     markup = InlineKeyboardMarkup()
     for idx, p in enumerate(products):
-        markup.add(InlineKeyboardButton(f"➕ {p.get('name')} - {p.get('price')} so'm", callback_data=f"add_{idx}"))
+        markup.add(InlineKeyboardButton(f"🌾 {p.get('name')} - {p.get('price')} so'm/kg", callback_data=f"prod_{idx}"))
     
-    bot.reply_to(message, "🛒 Kerakli mahsulotni tanlang (ustiga bossangiz savatchaga qo'shiladi):", reply_markup=markup)
+    bot.reply_to(message, "🛒 Kerakli mahsulotni tanlang:", reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('add_'))
-def handle_add_to_cart(call):
+# Mahsulot bosilganda kilo tanlash tugmalarini chiqarish
+@bot.callback_query_handler(func=lambda call: call.data.startswith('prod_'))
+def handle_product_select(call):
     idx = int(call.data.split('_')[1])
+    products = load_products()
+    
+    if idx < len(products):
+        product = products[idx]
+        
+        markup = InlineKeyboardMarkup(row_width=2)
+        # Tayyor kilo tugmalari (xohishga qarab qo'shish yoki o'zgartirish mumkin)
+        markup.add(
+            InlineKeyboardButton("10 kg", callback_data=f"qty_{idx}_10"),
+            InlineKeyboardButton("25 kg", callback_data=f"qty_{idx}_25"),
+            InlineKeyboardButton("50 kg", callback_data=f"qty_{idx}_50"),
+            InlineKeyboardButton("100 kg", callback_data=f"qty_{idx}_100"),
+            InlineKeyboardButton("500 kg", callback_data=f"qty_{idx}_500"),
+            InlineKeyboardButton("1 Tonna (1000 kg)", callback_data=f"qty_{idx}_1000")
+        )
+        markup.add(InlineKeyboardButton("⬅️ Ortga qaytish", callback_data="back_to_products"))
+        
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=f"📦 Tanlangan mahsulot: *{product.get('name')}*\n💰 Narxi: {product.get('price')} so'm/kg\n\nKerakli **koni (miqdorni)** tanlang:",
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
+
+# Tanlangan kiloni qabul qilib savatchaga qo'shish
+@bot.callback_query_handler(func=lambda call: call.data.startswith('qty_'))
+def handle_quantity_select(call):
+    parts = call.data.split('_')
+    idx = int(parts[1])
+    quantity = float(parts[2])
+    
     products = load_products()
     user_id = call.from_user.id
     
     if idx < len(products):
         product = products[idx]
+        price_per_kg = float(product.get('price', 0))
+        total_item_price = price_per_kg * quantity
+        
+        cart_item = {
+            "name": product.get('name'),
+            "price_per_kg": price_per_kg,
+            "quantity": quantity,
+            "total_price": total_item_price
+        }
         
         if user_id not in user_carts:
             user_carts[user_id] = []
+        user_carts[user_id].append(cart_item)
         
-        user_carts[user_id].append(product)
-        bot.answer_callback_query(call.id, f"✅ {product.get('name')} savatchaga qo'shildi!")
+        bot.answer_callback_query(call.id, f"✅ {quantity} kg {product.get('name')} savatchaga qo'shildi!")
         
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("🛍 Xaridni davom ettirish", callback_data="continue_shopping"))
+        markup.add(InlineKeyboardButton("🛍 Xaridni davom ettirish", callback_data="back_to_products"))
         markup.add(InlineKeyboardButton("🚀 Buyurtmani rasmiylashtirish", callback_data="checkout"))
         
-        bot.send_message(call.message.chat.id, f"📦 Tanlangan mahsulot: *{product.get('name')}* ({product.get('price')} so'm)\n\nSavatchangizda mahsulotlar bor. Davom etasizmi?", parse_mode="Markdown", reply_markup=markup)
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=f"✅ Savatchaga qo'shildi:\n\n"
+                 f"🔹 *{product.get('name')}* — {quantity} kg\n"
+                 f"💰 Summa: {total_item_price} so'm\n\n"
+                 f"Davom etasizmi?",
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
 
-@bot.callback_query_handler(func=lambda call: call.data == "continue_shopping")
-def continue_shopping(call):
+@bot.callback_query_handler(func=lambda call: call.data == "back_to_products")
+def back_to_products(call):
     bot.answer_callback_query(call.id)
-    show_shop_products(call.message)
+    # Eski xabarni o'chirib, mahsulotlar ro'yxatini qaytadan yuboramiz
+    products = load_products()
+    if not products:
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Hozircha sotuvda mahsulotlar mavjud emas.")
+        return
+    
+    markup = InlineKeyboardMarkup()
+    for idx, p in enumerate(products):
+        markup.add(InlineKeyboardButton(f"🌾 {p.get('name')} - {p.get('price')} so'm/kg", callback_data=f"prod_{idx}"))
+    
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text="🛒 Kerakli mahsulotni tanlang:",
+        reply_markup=markup
+    )
 
 @bot.message_handler(func=lambda message: message.text == "🛒 Savatcham")
 def show_cart(message):
@@ -93,14 +159,13 @@ def show_cart(message):
     
     cart = user_carts[user_id]
     text = "🛒 **Sizning savatchangiz:**\n\n"
-    total_price = 0
+    total_sum = 0
     
-    for idx, p in enumerate(cart, 1):
-        price = float(p.get('price', 0))
-        total_price += price
-        text += f"{idx}. {p.get('name')} — {p.get('price')} so'm\n"
+    for idx, item in enumerate(cart, 1):
+        text += f"{idx}. {item['name']} — {item['quantity']} kg x {item['price_per_kg']} so'm = *{item['total_price']} so'm*\n"
+        total_sum += item['total_price']
     
-    text += f"\n💰 **Jami summa:** {total_price} so'm"
+    text += f"\n💰 **Umumiy to'lov:** {total_sum} so'm"
     
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("🚀 Buyurtma berish", callback_data="checkout"))
@@ -150,22 +215,22 @@ def get_customer_address(message):
     customer_name = message.from_user.first_name or "Mijoz"
     
     order_details = ""
-    total_price = 0
-    for idx, p in enumerate(cart, 1):
-        order_details += f"{idx}. {p.get('name')} — {p.get('price')} so'm\n"
-        total_price += float(p.get('price', 0))
+    total_sum = 0
+    for idx, item in enumerate(cart, 1):
+        order_details += f"{idx}. {item['name']} — {item['quantity']} kg ({item['total_price']} so'm)\n"
+        total_sum += item['total_price']
     
-    order_details += f"\n💰 **Jami: {total_price} so'm**"
+    order_details += f"\n💰 **Jami summa: {total_sum} so'm**"
     
     bot.reply_to(message, "✅ Buyurtmangiz qabul qilindi! Tez orada operatorlarimiz siz bilan bog'lanishadi.")
     
-    # Buyurtma doimo FAQAT SIZGA (ADMIN_ID ga) keladi
+    # Buyurtma doimo SIZGA keladi
     if ADMIN_ID:
         admin_text = f"🚨 **YANGI BUYURTMA!**\n\n" \
                      f"👤 Mijoz: {customer_name}\n" \
                      f"📞 Tel: {data.get('phone')}\n" \
                      f"📍 Manzil: {address}\n\n" \
-                     f"🛒 **Buyurtmalar:**\n{order_details}"
+                     f"🛒 **Buyurtma qilingan mahsulotlar:**\n{order_details}"
         bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
     
     user_carts[user_id] = []
@@ -176,12 +241,12 @@ def ask_product_name(message):
         bot.reply_to(message, "Kechirasiz, bu buyruq faqat admin uchun.")
         return
         
-    msg = bot.reply_to(message, "Yangi mahsulot nomini kiriting (masalan: Bug'doy kepagi):")
+    msg = bot.reply_to(message, "Yangi mahsulot nomini kiriting (masalan: Arpa yoki Kunjara):")
     bot.register_next_step_handler(msg, process_product_name)
 
 def process_product_name(message):
     name = message.text
-    msg = bot.reply_to(message, f"Mahsulot nomi: *{name}*.\nEndi narxini kiriting (faqat raqamda, masalan: 2500):", parse_mode="Markdown")
+    msg = bot.reply_to(message, f"Mahsulot nomi: *{name}*.\nEndi **1 kg uchun narxini** kiriting (faqat raqamda, masalan: 3000):", parse_mode="Markdown")
     bot.register_next_step_handler(msg, process_product_price, name)
 
 def process_product_price(message, name):
@@ -191,7 +256,7 @@ def process_product_price(message, name):
     products.append({"name": name, "price": price})
     save_products(products)
     
-    bot.reply_to(message, f"✅ Muvaffaqiyatli qo'shildi!\n\n📦 Nomi: {name}\n💰 Narxi: {price} so'm\n\n*Saytga va botga avtomatik qo'shildi!*", parse_mode="Markdown")
+    bot.reply_to(message, f"✅ Muvaffaqiyatli qo'shildi!\n\n📦 Nomi: {name}\n💰 1 kg narxi: {price} so'm\n\n*Saytga va botga avtomatik qo'shildi!*", parse_mode="Markdown")
 
 if __name__ == "__main__":
     print("Bot mukammal rejimda ishga tushdi...")
