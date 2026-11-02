@@ -6,7 +6,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
 
-# Sening ma'lumotlaring kiritildi
+# Sening ma'lumotlaring
 TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE" 
 ADMIN_ID = 8630108906
 
@@ -22,7 +22,7 @@ async def cmd_start(message: Message):
             [
                 InlineKeyboardButton(
                     text="🛒 Tinchlik Yemxona Katalogi", 
-                    web_app=WebAppInfo(url="https://tinchlik-yemxona.onrender.com") # Render'dagi saytingiz havolasini yozasiz
+                    web_app=WebAppInfo(url="https://tinchlik-yemxona.onrender.com") # Render'dagi saytingiz havolasi
                 )
             ]
         ]
@@ -35,7 +35,10 @@ async def cmd_start(message: Message):
         parse_mode="Markdown"
     )
 
-# Aiohttp server qismi (Mini Appdan buyurtmalarni qabul qilish uchun)
+# Aiohttp server qismi: Mini App sahifasini ochish va buyurtmalarni qabul qilish
+async def handle_index(request):
+    return web.FileResponse('index.html')
+
 async def handle_order(request):
     try:
         data = await request.json()
@@ -63,7 +66,7 @@ async def handle_order(request):
             except Exception as e:
                 logging.error(f"Mijozga xabar yuborishda xatolik: {e}")
 
-        # Adminga yuboriladigan xabar (Senga keladi)
+        # Adminga yuboriladigan xabar
         admin_message = (
             f"🔔 **YANGI BUYURTMA KELDI!** 🚀\n\n"
             f"👤 **Mijoz:** {user_name} (ID: {user_id})\n"
@@ -80,10 +83,10 @@ async def handle_order(request):
 
 async def web_server():
     app = web.Application()
+    # Asosiy sahifani (index.html) to'g'ridan-to'g'ri ochish uchun route
+    app.router.add_get('/', handle_index)
+    # Buyurtma qabul qilish API
     app.router.add_post('/api/order', handle_order)
-    
-    # Statik fayllarni (index.html va boshqalarni) ulash
-    app.router.add_static('/', path='.', name='static')
     
     runner = web.AppRunner(app)
     await runner.setup()
@@ -93,7 +96,7 @@ async def web_server():
 
 async def main():
     dp.include_router(router)
-    # Bot va veb-serverni bir vaqtning o'zida ishga tushiramiz
+    # Bot polling va veb-serverni birgalikda ishga tushirish
     await asyncio.gather(
         dp.start_polling(bot),
         web_server()
