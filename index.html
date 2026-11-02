@@ -3,178 +3,395 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tinchlik Yemxona</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Tinchlik Yemxona - Rasmiy Do'kon</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --text-color: #2c3e50;
+            --card-bg: #ffffff;
+            --primary-color: #27ae60;
+            --button-hover: #219653;
+            --danger-color: #e74c3c;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            padding-bottom: 140px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h2 { margin: 0; color: #2c3e50; font-size: 22px; }
+        .header p { margin: 5px 0 0; color: #7f8c8d; font-size: 14px; }
+        
+        .admin-panel {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .admin-panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #856404; }
+        .admin-panel input, .admin-panel select {
+            width: 100%;
+            padding: 10px;
+            margin: 6px 0;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .admin-panel button {
+            width: 100%;
+            background: #f39c12;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+            font-size: 15px;
+        }
+
+        .product-card {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 14px;
+            margin-bottom: 14px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border: 1px solid #eef2f7;
+        }
+        .product-info h3 { margin: 0 0 4px 0; font-size: 18px; color: #333; }
+        .product-info p { margin: 0; color: #e67e22; font-weight: bold; font-size: 15px; }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        .qty-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        button.btn-action {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button.btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        input.kg-input {
+            width: 100px;
+            text-align: center;
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #1e293b;
+        }
+        .qop-count {
+            font-size: 16px;
+            font-weight: bold;
+            min-width: 35px;
+            text-align: center;
+            color: #1e293b;
+        }
+
+        .cart-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            padding: 15px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-top: 1px solid #e2e8f0;
+            border-radius: 20px 20px 0 0;
+        }
+        .phone-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 15px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        .phone-input:focus { border-color: #3498db; }
+        .cart-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .total-price {
+            font-size: 17px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        button.btn-submit {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+        button.btn-submit:active { background-color: var(--button-hover); }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 pb-28">
+<body>
 
-    <header class="bg-emerald-600 text-white p-4 shadow-md sticky top-0 z-50">
-        <div class="max-w-md mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold">🌾 Tinchlik Yemxona</h1>
-            <span id="cart-count" class="bg-white text-emerald-600 text-xs font-bold px-2 py-1 rounded-full">0 ta</span>
-        </div>
-    </header>
-
-    <main class="max-w-md mx-auto p-4">
-        <div id="product-list" class="space-y-4">
-            <!-- Mahsulotlar yuklanmoqda -->
-        </div>
-    </main>
-
-    <!-- Savatcha paneli -->
-    <div id="cart-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-end">
-        <div class="bg-white w-full rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold">🛒 Sizning savatchangiz</h2>
-                <button onclick="toggleCart()" class="text-gray-500 font-bold text-xl">&times;</button>
-            </div>
-            
-            <div id="cart-items" class="space-y-3 mb-4"></div>
-
-            <div class="border-t pt-3 space-y-3">
-                <div class="flex justify-between font-bold text-lg">
-                    <span>Jami:</span>
-                    <span id="total-price">0 so'm</span>
-                </div>
-
-                <input type="text" id="phone" placeholder="Telefon raqamingiz (+998 ...)" class="w-full p-3 border rounded-xl">
-                <input type="text" id="address" placeholder="Yetkazish manzili (MFY, ko'cha...)" class="w-full p-3 border rounded-xl">
-
-                <button onclick="checkout()" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg">Buyurtmani tasdiqlash</button>
-            </div>
-        </div>
+    <div class="header">
+        <h2>🌾 Tinchlik Yemxona</h2>
+        <p>Sifatli va hamyonbop yem-hasak mahsulotlari</p>
     </div>
 
-    <!-- Pastki tugma -->
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg">
-        <div class="max-w-md mx-auto flex justify-between items-center">
-            <div>
-                <p class="text-xs text-gray-500">Umumiy summa:</p>
-                <p id="footer-total" class="text-lg font-bold text-emerald-600">0 so'm</p>
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="admin-panel" style="display:none;">
+        <h3>➕ Yangi mahsulot qo'shish (Admin)</h3>
+        <input type="text" id="newTitle" placeholder="Mahsulot nomi (masalan: Bug'doy)">
+        <input type="number" id="newPrice" placeholder="Narxi (so'mda)">
+        <select id="newUnit">
+            <option value="kg">Kg (Qo'lda kiritish)</option>
+            <option value="qop">Qop (+/- tugma)</option>
+        </select>
+        <button onclick="addProduct()">Mahsulotni qo'shish</button>
+    </div>
+
+    <div id="productsList"></div>
+
+    <div class="cart-bar">
+        <input type="tel" id="clientPhone" class="phone-input" placeholder="📞 Telefon raqamingiz (+998 90 123 45 67)">
+        <div class="cart-row">
+            <div class="total-price">
+                Jami: <span id="totalSum">0</span> so'm
             </div>
-            <button onclick="toggleCart()" class="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold shadow">Savatchani ko'rish</button>
+            <button class="btn-submit" onclick="submitOrder()">Buyurtma berish 🚀</button>
         </div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
+        tg.ready();
         tg.expand();
 
-        let products = [];
-        let cart = {};
-
-        async function fetchProducts() {
-            try {
-                // Muhim: Brauzer keshida saqlanib qolmasligi uchun vaqt qo'shamiz
-                let response = await fetch('products.json?t=' + new Date().getTime());
-                products = await response.json();
-                renderProducts();
-            } catch (error) {
-                console.error("Xatolik:", error);
-            }
+        const user = tg.initDataUnsafe?.user;
+        if (user && user.id === 8630108906) {
+            document.getElementById('adminPanel').style.display = 'block';
         }
 
+        let products = [
+            { id: 1, name: "Bug'doy yemi (Premial)", price: 3500, unit: "kg" },
+            { id: 2, name: "Makka yemi", price: 4200, unit: "kg" },
+            { id: 3, name: "Kombiqorm", price: 180000, unit: "qop" }
+        ];
+
+        let cart = {};
+
         function renderProducts() {
-            const list = document.getElementById('product-list');
+            const list = document.getElementById('productsList');
             list.innerHTML = '';
             
-            if (!products || products.length === 0) {
-                list.innerHTML = `<div class="text-center py-10 text-gray-500"><p class="text-lg font-semibold">🌾 Hozircha mahsulotlar mavjud emas</p></div>`;
+            products.forEach(p => {
+                let currentQty = cart[p.id] ? cart[p.id].qty : 0;
+                let card = document.createElement('div');
+                card.className = 'product-card';
+                
+                let controlHtml = '';
+                if (p.unit === 'kg') {
+                    controlHtml = `
+                        <div class="qty-control">
+                            <span style="font-size: 14px; color: #64748b;">Kg miqdori:</span>
+                            <input type="number" class="kg-input" id="qty_${p.id}" value="${currentQty > 0 ? currentQty : ''}" placeholder="0 kg" min="1" oninput="updateKgInput(${p.id}, this.value)">
+                        </div>
+                    `;
+                } else {
+                    controlHtml = `
+                        <div class="qty-control">
+                            <button class="btn-action" onclick="changeQop(${p.id}, -1)">-</button>
+                            <span class="qop-count" id="qty_${p.id}">${currentQty}</span> <span style="font-size: 14px; color: #64748b;">qop</span>
+                            <button class="btn-action" onclick="changeQop(${p.id}, 1)">+</button>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="product-info">
+                        <h3>${p.name}</h3>
+                        <p>${p.price.toLocaleString()} so'm / ${p.unit}</p>
+                    </div>
+                    <div class="controls">
+                        ${controlHtml}
+                        ${user && user.id === 8630108906 ? `<button class="btn-danger" onclick="deleteProduct(${p.id})">O'chirish</button>` : ''}
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+            updateTotal();
+        }
+
+        function updateKgInput(id, val) {
+            let qty = parseFloat(val);
+            if (isNaN(qty) || qty <= 0) {
+                delete cart[id];
+            } else {
+                if (!cart[id]) cart[id] = {};
+                cart[id].qty = qty;
+            }
+            updateTotal();
+        }
+
+        function changeQop(id, delta) {
+            if (!cart[id]) {
+                cart[id] = { qty: 0 };
+            }
+            cart[id].qty += delta;
+            if (cart[id].qty < 0) cart[id].qty = 0;
+            
+            if (cart[id].qty === 0) {
+                delete cart[id];
+                document.getElementById(`qty_${id}`).innerText = 0;
+            } else {
+                document.getElementById(`qty_${id}`).innerText = cart[id].qty;
+            }
+            updateTotal();
+        }
+
+        function updateTotal() {
+            let total = 0;
+            for (let id in cart) {
+                let p = products.find(prod => prod.id == id);
+                if (p) {
+                    total += p.price * cart[id].qty;
+                }
+            }
+            document.getElementById('totalSum').innerText = total.toLocaleString();
+        }
+
+        function addProduct() {
+            let title = document.getElementById('newTitle').value.trim();
+            let price = parseFloat(document.getElementById('newPrice').value);
+            let unit = document.getElementById('newUnit').value;
+
+            if (!title || !price) {
+                alert("Mahsulot nomi va narxini to'liq kiriting!");
                 return;
             }
 
-            products.forEach(p => {
-                let qty = cart[p.id] ? cart[p.id].qty : 0;
-                list.innerHTML += `
-                    <div class="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between border border-gray-100 mb-3">
-                        <div>
-                            <h3 class="font-bold text-lg">${p.name}</h3>
-                            <p class="text-emerald-600 font-semibold">${p.price.toLocaleString()} so'm / dona</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <button onclick="changeQty(${p.id}, -1)" class="w-8 h-8 bg-gray-100 rounded-lg font-bold">-</button>
-                            <span class="w-6 text-center font-bold">${qty}</span>
-                            <button onclick="changeQty(${p.id}, 1)" class="w-8 h-8 bg-emerald-600 text-white rounded-lg font-bold">+</button>
-                        </div>
-                    </div>
-                `;
-            });
+            let newProd = {
+                id: Date.now(),
+                name: title,
+                price: price,
+                unit: unit
+            };
+            products.push(newProd);
+            renderProducts();
+
+            document.getElementById('newTitle').value = '';
+            document.getElementById('newPrice').value = '';
         }
 
-        function changeQty(id, delta) {
-            if (!cart[id]) {
-                if (delta > 0) {
-                    let p = products.find(item => item.id === id);
-                    cart[id] = { ...p, qty: 1 };
-                }
-            } else {
-                cart[id].qty += delta;
-                if (cart[id].qty <= 0) delete cart[id];
-            }
-            updateCartUI();
+        function deleteProduct(id) {
+            products = products.filter(p => p.id !== id);
+            delete cart[id];
             renderProducts();
         }
 
-        function updateCartUI() {
-            let totalItems = 0;
-            let totalPrice = 0;
-            let cartItemsEl = document.getElementById('cart-items');
-            cartItemsEl.innerHTML = '';
+        function submitOrder() {
+            let phone = document.getElementById('clientPhone').value.trim();
+            if (!phone) {
+                alert("Iltimos, siz bilan bog'lanishimiz uchun telefon raqamingizni kiriting!");
+                document.getElementById('clientPhone').focus();
+                return;
+            }
+
+            let items = [];
+            let total = 0;
 
             for (let id in cart) {
-                let item = cart[id];
-                totalItems += item.qty;
-                totalPrice += item.price * item.qty;
-                cartItemsEl.innerHTML += `
-                    <div class="flex justify-between items-center border-b pb-2">
-                        <div>
-                            <p class="font-bold">${item.name}</p>
-                            <p class="text-sm text-gray-500">${item.qty} dona x ${item.price.toLocaleString()} so'm</p>
-                        </div>
-                        <p class="font-bold">${(item.qty * item.price).toLocaleString()} so'm</p>
-                    </div>
-                `;
+                let p = products.find(prod => prod.id == id);
+                if (p && cart[id].qty > 0) {
+                    items.push({
+                        name: p.name,
+                        qty: cart[id].qty,
+                        unit: p.unit,
+                        price: p.price
+                    });
+                    total += p.price * cart[id].qty;
+                }
             }
 
-            document.getElementById('cart-count').innerText = `${totalItems} ta`;
-            document.getElementById('total-price').innerText = `${totalPrice.toLocaleString()} so'm`;
-            document.getElementById('footer-total').innerText = `${totalPrice.toLocaleString()} so'm`;
-        }
-
-        function toggleCart() {
-            document.getElementById('cart-modal').classList.toggle('hidden');
-        }
-
-        function checkout() {
-            let phone = document.getElementById('phone').value;
-            let address = document.getElementById('address').value;
-
-            if (!phone || !address) {
-                alert("Iltimos, telefon raqam va manzilni kiriting!");
-                return;
-            }
-
-            let items = Object.values(cart);
             if (items.length === 0) {
-                alert("Savatchangiz bo'sh!");
+                alert("Savat bo'sh! Iltimos, mahsulot miqdorini tanlang.");
                 return;
             }
 
-            let totalPrice = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
-
-            let data = {
-                items: items,
-                totalPrice: totalPrice,
+            let orderData = {
+                user_id: user ? user.id : 'unknown',
+                user_name: user ? (user.first_name + (user.last_name ? ' ' + user.last_name : '')) : 'Hurmatli mijoz',
                 phone: phone,
-                address: address
+                items: items,
+                total: total
             };
 
-            tg.sendData(JSON.stringify(data));
-            tg.close();
+            fetch('/api/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert("Buyurtmangiz muvaffaqiyatli qabul qilindi! Tez orada siz bilan bog'lanamiz.");
+                cart = {};
+                document.getElementById('clientPhone').value = '';
+                renderProducts();
+                tg.close();
+            })
+            .catch(err => {
+                alert("Xatolik yuz berdi: " + err);
+            });
         }
 
-        fetchProducts();
+        renderProducts();
     </script>
 </body>
 </html>
