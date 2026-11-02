@@ -1,93 +1,104 @@
 import asyncio
-import json
 import logging
-from aiohttp import web
-from aiogram import Bot, Dispatcher, types
+import os
+from aiogram import Bot, Dispatcher, Router
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
+from aiohttp import web
 
-TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE"
+# Sening ma'lumotlaring kiritildi
+TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE" 
 ADMIN_ID = 8630108906
-# Render bergan doimiy productionhavola
-WEBAPP_URL = "https://tinchlik-yemxona-1.onrender.com"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+router = Router()
 
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🌾 Tinchlik Yemxona Do'konini Ochish", web_app=WebAppInfo(url=WEBAPP_URL))]
-    ])
-    welcome_text = (
-        "Assalomu alaykum! 🌟\n"
-        "**Tinchlik Yemxona** rasmiy buyurtma botiga xush kelibsiz.\n\n"
-        "Eng sifatli yem-hasak mahsulotlarini qulay narxlarda to'g'ridan-to'g'ri xarid qiling. "
-        "Buyurtma berish uchun quyidagi tugmani bosing va kerakli mahsulotlarni tanlang! 🚀"
+# /start buyrug'i - iliq kutib olish va Mini App tugmasi
+@router.message(Command("start"))
+async def cmd_start(message: Message):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🛒 Tinchlik Yemxona Katalogi", 
+                    web_app=WebAppInfo(url="https://tinchlik-yemxona.onrender.com") # Render'dagi saytingiz havolasini yozasiz
+                )
+            ]
+        ]
     )
-    await message.answer(welcome_text, reply_markup=kb, parse_mode="Markdown")
+    await message.answer(
+        f"Assalomu alaykum, hurmatli mijozimiz! 😊\n"
+        f"🌾 **Tinchlik Yemxona** rasmiy buyurtma botiga xush kelibsiz.\n\n"
+        f"Bugun mol-holingiz uchun qanday yem-hasak kerak? Pastdagi tugmani bosing va o'zingizga kerakli mahsulotlarni tanlang!",
+        reply_markup=keyboard,
+        parse_mode="Markdown"
+    )
 
-async def index(request):
-    return web.FileResponse('index.html')
-
+# Aiohttp server qismi (Mini Appdan buyurtmalarni qabul qilish uchun)
 async def handle_order(request):
     try:
         data = await request.json()
+        user_id = data.get('user_id')
+        user_name = data.get('user_name', 'Mijoz')
+        phone = data.get('phone')
         items = data.get('items', [])
         total = data.get('total', 0)
-        user_id = data.get('user_id', 'Nomaʼlum')
-        user_name = data.get('user_name', 'Mijoz')
-        phone = data.get('phone', 'Kiritilmagan')
 
-        # Iliq va professional biznes uslubidagi xabar formati
-        order_text = (
-            f"🔥 **YANGI BUYURTMA KELDI!**\n\n"
-            f"👤 **Mijoz:** {user_name}\n"
-            f"🆔 **Telegram ID:** `{user_id}`\n"
-            f"📞 **Telefon raqam:** `{phone}`\n\n"
-            f"📋 **Buyurtma tarkibi:**\n"
+        # Mahsulotlar ro'yxatini shakllantirish
+        items_text = "\n".join([f"• {item['name']} - {item['qty']} {item['unit']} ({item['price']:,} so'mdan)" for item in items])
+        
+        # Mijozga yuboriladigan iliq xabar
+        client_message = (
+            f"✅ **Buyurtmangiz muvaffaqiyatli qabul qilindi!**\n\n"
+            f"📦 **Sizning xaridlaringiz:**\n{items_text}\n\n"
+            f"💰 **Jami summa:** {total:,} so'm\n"
+            f"📞 **Telefon raqamingiz:** {phone}\n\n"
+            f"⏳ *Tez orada mutaxassisimiz yoki sotuvchi 5 daqiqa ichida siz bilan bog'lanadi.* Xaridingiz uchun rahmat! 😊"
         )
         
-        for idx, item in enumerate(items, 1):
-            name = item.get('name', 'Mahsulot')
-            qty = item.get('qty', 0)
-            unit = item.get('unit', 'kg')
-            price = item.get('price', 0)
-            subtotal = qty * price
-            order_text += f"{idx}. {name} — {qty} {unit} x {price:,} so'm = **{subtotal:,} so'm**\n"
-        
-        order_text += (
-            f"\n----------------------------------\n"
-            f"💰 **JAMI SUMMA: {total:,} so'm**\n"
-            f"----------------------------------\n"
-            f"✨ *Iltimos, mijoz bilan tezroq bog'lanib, buyurtmani tasdiqlang!*"
+        if user_id and user_id != 'unknown':
+            try:
+                await bot.send_message(chat_id=user_id, text=client_message, parse_mode="Markdown")
+            except Exception as e:
+                logging.error(f"Mijozga xabar yuborishda xatolik: {e}")
+
+        # Adminga yuboriladigan xabar (Senga keladi)
+        admin_message = (
+            f"🔔 **YANGI BUYURTMA KELDI!** 🚀\n\n"
+            f"👤 **Mijoz:** {user_name} (ID: {user_id})\n"
+            f"📞 **Telefon:** {phone}\n\n"
+            f"📋 **Mahsulotlar:**\n{items_text}\n\n"
+            f"💵 **Jami summa:** {total:,} so'm"
         )
+        await bot.send_message(chat_id=ADMIN_ID, text=admin_message, parse_mode="Markdown")
 
-        # Adminga xabar yuborish
-        await bot.send_message(ADMIN_ID, order_text, parse_mode="Markdown")
-
-        return web.json_response({"status": "success", "message": "Buyurtma muvaffaqiyatli qabul qilindi!"})
+        return web.json_response({"status": "success"})
     except Exception as e:
-        logging.error(f"Buyurtmani qabul qilishda xatolik: {e}")
+        logging.error(f"Buyurtmani qayta ishlashda xatolik: {e}")
         return web.json_response({"status": "error", "message": str(e)}, status=400)
 
 async def web_server():
     app = web.Application()
-    app.router.add_get('/', index)
     app.router.add_post('/api/order', handle_order)
+    
+    # Statik fayllarni (index.html va boshqalarni) ulash
     app.router.add_static('/', path='.', name='static')
-    return app
-
-async def main():
-    logging.basicConfig(level=logging.INFO)
-    app = await web_server()
+    
     runner = web.AppRunner(app)
     await runner.setup()
-    # Render portni avtomatik beradi, shuning uchun 8080 ishlatamiz
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    port = int(os.environ.get("PORT", 10000))
+    site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
-    print("Server ishga tushdi.")
-    await dp.start_polling(bot)
 
-if __name__ == '__main__':
+async def main():
+    dp.include_router(router)
+    # Bot va veb-serverni bir vaqtning o'zida ishga tushiramiz
+    await asyncio.gather(
+        dp.start_polling(bot),
+        web_server()
+    )
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())

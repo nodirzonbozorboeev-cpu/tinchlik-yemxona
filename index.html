@@ -176,6 +176,12 @@
             box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
         }
         button.btn-submit:active { background-color: var(--button-hover); }
+        button.btn-submit:disabled {
+            background-color: #bdc3c7;
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
     </style>
 </head>
 <body>
@@ -200,12 +206,12 @@
     <div id="productsList"></div>
 
     <div class="cart-bar">
-        <input type="tel" id="clientPhone" class="phone-input" placeholder="📞 Telefon raqamingiz (+998 90 123 45 67)">
+        <input type="tel" id="clientPhone" class="phone-input" placeholder="📞 Telefon raqamingiz (+998 90 123 45 67)" oninput="checkPhone()">
         <div class="cart-row">
             <div class="total-price">
                 Jami: <span id="totalSum">0</span> so'm
             </div>
-            <button class="btn-submit" onclick="submitOrder()">Buyurtma berish 🚀</button>
+            <button class="btn-submit" id="submitBtn" onclick="submitOrder()" disabled>Buyurtma berish 🚀</button>
         </div>
     </div>
 
@@ -225,7 +231,6 @@
             { id: 3, name: "Kombiqorm", price: 180000, unit: "qop" }
         ];
 
-        // Har safar toza obyekt bilan boshlaymiz, eski xato keshni inkor etamiz
         let cart = {};
 
         function renderProducts() {
@@ -305,6 +310,16 @@
             document.getElementById('totalSum').innerText = total.toLocaleString();
         }
 
+        function checkPhone() {
+            let phone = document.getElementById('clientPhone').value.trim();
+            let btn = document.getElementById('submitBtn');
+            if (phone.length >= 9) {
+                btn.removeAttribute('disabled');
+            } else {
+                btn.setAttribute('disabled', 'true');
+            }
+        }
+
         function addProduct() {
             let title = document.getElementById('newTitle').value.trim();
             let price = parseFloat(document.getElementById('newPrice').value);
@@ -337,8 +352,7 @@
         function submitOrder() {
             let phone = document.getElementById('clientPhone').value.trim();
             if (!phone) {
-                alert("Iltimos, siz bilan bog'lanishimiz uchun telefon raqamingizni kiriting!");
-                document.getElementById('clientPhone').focus();
+                alert("Iltimos, telefon raqamingizni kiriting!");
                 return;
             }
 
@@ -359,7 +373,7 @@
             }
 
             if (items.length === 0) {
-                alert("Savat bo'sh! Iltimos, mahsulot miqdorini tanlang.");
+                alert("Savat bo'sh! Mahsulot tanlang.");
                 return;
             }
 
@@ -378,9 +392,10 @@
             })
             .then(res => res.json())
             .then(data => {
-                alert("Buyurtmangiz muvaffaqiyatli qabul qilindi! Tez orada siz bilan bog'lanamiz.");
+                alert("Buyurtmangiz muvaffaqiyatli qabul qilindi! Sotuvchi 5 daqiqa ichida siz bilan bog'lanadi.");
                 cart = {};
                 document.getElementById('clientPhone').value = '';
+                checkPhone();
                 renderProducts();
                 tg.close();
             })
