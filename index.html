@@ -225,11 +225,8 @@
             document.getElementById('adminPanel').style.display = 'block';
         }
 
-        let products = [
-            { id: 1, name: "Bug'doy yemi (Premial)", price: 3500, unit: "kg" },
-            { id: 2, name: "Makka yemi", price: 4200, unit: "kg" },
-            { id: 3, name: "Kombiqorm", price: 180000, unit: "qop" }
-        ];
+        // Boshlang'ich mahsulotlar olib tashlandi, endi ro'yxat bo'sh boshlanadi
+        let products = [];
 
         let cart = {};
 
@@ -237,6 +234,12 @@
             const list = document.getElementById('productsList');
             list.innerHTML = '';
             
+            if (products.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #7f8c8d; font-size: 15px;">Hozircha mahsulotlar mavjud emas.</p>';
+                updateTotal();
+                return;
+            }
+
             products.forEach(p => {
                 let currentQty = (cart[p.id] && cart[p.id] > 0) ? cart[p.id] : 0;
                 let card = document.createElement('div');
