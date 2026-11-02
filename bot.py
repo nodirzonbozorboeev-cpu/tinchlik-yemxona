@@ -8,7 +8,8 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE"
 ADMIN_ID = 8630108906
-WEBAPP_URL = "https://exclusive-ascent-calzone.ngrok-free.dev"
+# Render bergan doimiy productionhavola
+WEBAPP_URL = "https://tinchlik-yemxona-1.onrender.com"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -82,9 +83,10 @@ async def main():
     app = await web_server()
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, 'localhost', 8080)
+    # Render portni avtomatik beradi, shuning uchun 8080 ishlatamiz
+    site = web.TCPSite(runner, '0.0.0.0', 8080)
     await site.start()
-    print("Aiohttp server http://localhost:8080 da ishga tushdi.")
+    print("Server ishga tushdi.")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
