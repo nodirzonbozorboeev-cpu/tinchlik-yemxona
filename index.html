@@ -232,7 +232,7 @@
             list.innerHTML = '';
             
             products.forEach(p => {
-                let currentQty = cart[p.id] ? cart[p.id].qty : 0;
+                let currentQty = (cart[p.id] && cart[p.id].qty > 0) ? cart[p.id].qty : 0;
                 let card = document.createElement('div');
                 card.className = 'product-card';
                 
@@ -241,14 +241,14 @@
                     controlHtml = `
                         <div class="qty-control">
                             <span style="font-size: 14px; color: #64748b;">Kg miqdori:</span>
-                            <input type="number" class="kg-input" id="qty_${p.id}" value="${currentQty > 0 ? currentQty : ''}" placeholder="0 kg" min="1" oninput="updateKgInput(${p.id}, this.value)">
+                            <input type="number" class="kg-input" value="${currentQty > 0 ? currentQty : ''}" placeholder="0 kg" min="0" oninput="updateKgInput(${p.id}, this.value)">
                         </div>
                     `;
                 } else {
                     controlHtml = `
                         <div class="qty-control">
                             <button class="btn-action" onclick="changeQop(${p.id}, -1)">-</button>
-                            <span class="qop-count" id="qty_${p.id}">${currentQty}</span> <span style="font-size: 14px; color: #64748b;">qop</span>
+                            <span class="qop-count">${currentQty}</span> <span style="font-size: 14px; color: #64748b;">qop</span>
                             <button class="btn-action" onclick="changeQop(${p.id}, 1)">+</button>
                         </div>
                     `;
@@ -285,22 +285,21 @@
                 cart[id] = { qty: 0 };
             }
             cart[id].qty += delta;
-            if (cart[id].qty < 0) cart[id].qty = 0;
+            if (cart[id].qty < 0) {
+                cart[id].qty = 0;
+            }
             
             if (cart[id].qty === 0) {
                 delete cart[id];
-                document.getElementById(`qty_${id}`).innerText = 0;
-            } else {
-                document.getElementById(`qty_${id}`).innerText = cart[id].qty;
             }
-            updateTotal();
+            renderProducts();
         }
 
         function updateTotal() {
             let total = 0;
             for (let id in cart) {
                 let p = products.find(prod => prod.id == id);
-                if (p) {
+                if (p && cart[id].qty > 0) {
                     total += p.price * cart[id].qty;
                 }
             }
