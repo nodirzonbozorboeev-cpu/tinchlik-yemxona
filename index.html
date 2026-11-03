@@ -228,14 +228,28 @@
         let products = [];
         let cart = {};
 
-        // Serverdan mahsulotlarni tortib kelish
+        // Serverdan va localStorage dan mahsulotlarni yuklash
         async function loadProducts() {
             try {
                 let res = await fetch('/api/products');
-                products = await res.json();
+                let serverProducts = await res.json();
+                
+                // Agar serverda mahsulot bo'lmasa yoki localStorage'da yangirog'i bo'lsa
+                if (serverProducts && serverProducts.length > 0) {
+                    products = serverProducts;
+                } else {
+                    let localProds = localStorage.getItem('tinchlik_products');
+                    if (localProds) {
+                        products = JSON.parse(localProds);
+                    }
+                }
                 renderProducts();
             } catch (e) {
-                console.error("Mahsulotlarni yuklashda xatolik:", e);
+                let localProds = localStorage.getItem('tinchlik_products');
+                if (localProds) {
+                    products = JSON.parse(localProds);
+                }
+                renderProducts();
             }
         }
 
@@ -343,39 +357,39 @@
             }
 
             let newProd = {
+                id: Date.now(),
                 name: title,
                 price: price,
                 unit: unit
             };
 
-            let res = await fetch('/api/add-product', {
+            products.push(newProd);
+            localStorage.setItem('tinchlik_products', JSON.stringify(products));
+
+            // Serverga ham yuborib qo'yamiz
+            await fetch('/api/add-product', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newProd)
             });
 
-            if (res.ok) {
-                document.getElementById('newTitle').value = '';
-                document.getElementById('newPrice').value = '';
-                loadProducts();
-            } else {
-                alert("Mahsulot qo'shishda xatolik yuz berdi!");
-            }
+            document.getElementById('newTitle').value = '';
+            document.getElementById('newPrice').value = '';
+            renderProducts();
         }
 
         async function deleteProduct(id) {
-            let res = await fetch('/api/delete-product', {
+            products = products.filter(p => p.id !== id);
+            localStorage.setItem('tinchlik_products', JSON.stringify(products));
+            delete cart[id];
+
+            await fetch('/api/delete-product', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: id })
             });
 
-            if (res.ok) {
-                delete cart[id];
-                loadProducts();
-            } else {
-                alert("O'chirishda xatolik yuz berdi!");
-            }
+            renderProducts();
         }
 
         function submitOrder() {
@@ -425,7 +439,7 @@
                 cart = {};
                 document.getElementById('clientPhone').value = '';
                 checkPhone();
-                loadProducts();
+                renderProducts();
                 tg.close();
             })
             .catch(err => {
@@ -433,7 +447,6 @@
             });
         }
 
-        // Ishga tushganda mahsulotlarni yuklash
         loadProducts();
     </script>
 </body>
