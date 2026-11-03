@@ -7,33 +7,13 @@ from aiogram.filters import Command
 from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
 
+# O'zingizning token va ID laringiz
 TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE" 
 ADMIN_ID = 8630108906
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 router = Router()
-
-# Render uchun aniq va doimiy fayl yo'li
-DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "products.json")
-
-def load_products():
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                content = f.read()
-                if content.strip():
-                    return json.loads(content)
-        except Exception as e:
-            logging.error(f"O'qish xatoligi: {e}")
-    return []
-
-def save_products(prods):
-    try:
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(prods, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        logging.error(f"Yozish xatoligi: {e}")
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
@@ -55,44 +35,11 @@ async def cmd_start(message: Message):
         parse_mode="Markdown"
     )
 
+# Frontendni (Katalogni) ochib beruvchi funksiya
 async def handle_index(request):
     return web.FileResponse('index.html')
 
-async def get_products(request):
-    prods = load_products()
-    return web.json_response(prods)
-
-async def add_product_api(request):
-    try:
-        data = await request.json()
-        prods = load_products()
-        
-        new_prod = {
-            "id": int(asyncio.get_event_loop().time() * 1000),
-            "name": data.get('name'),
-            "price": data.get('price'),
-            "unit": data.get('unit')
-        }
-        prods.append(new_prod)
-        save_products(prods)
-        
-        return web.json_response({"status": "success", "product": new_prod})
-    except Exception as e:
-        return web.json_response({"status": "error", "message": str(e)}, status=400)
-
-async def delete_product_api(request):
-    try:
-        data = await request.json()
-        prod_id = data.get('id')
-        prods = load_products()
-        
-        prods = [p for p in prods if p['id'] != prod_id]
-        save_products(prods)
-        
-        return web.json_response({"status": "success"})
-    except Exception as e:
-        return web.json_response({"status": "error", "message": str(e)}, status=400)
-
+# Mijoz buyurtma berganda ishlaydigan funksiya
 async def handle_order(request):
     try:
         data = await request.json()
@@ -102,8 +49,10 @@ async def handle_order(request):
         items = data.get('items', [])
         total = data.get('total', 0)
 
+        # Mahsulotlar ro'yxatini chiroyli matn qilish
         items_text = "\n".join([f"• {item['name']} - {item['qty']} {item['unit']} ({item['price']:,} so'mdan)" for item in items])
         
+        # Mijozning o'ziga boradigan xabar
         client_message = (
             f"✅ **Buyurtmangiz muvaffaqiyatli qabul qilindi!**\n\n"
             f"📦 **Sizning xaridlaringiz:**\n{items_text}\n\n"
@@ -118,6 +67,7 @@ async def handle_order(request):
             except Exception as e:
                 logging.error(f"Mijozga xabar yuborishda xatolik: {e}")
 
+        # Sizga (Adminga) keladigan xabar
         admin_message = (
             f"🔔 **YANGI BUYURTMA KELDI!** 🚀\n\n"
             f"👤 **Mijoz:** {user_name} (ID: {user_id})\n"
@@ -132,13 +82,11 @@ async def handle_order(request):
         logging.error(f"Buyurtmani qayta ishlashda xatolik: {e}")
         return web.json_response({"status": "error", "message": str(e)}, status=400)
 
+# Veb serverni sozlash (Ortiqcha API'larsiz)
 async def web_server():
     app = web.Application()
     app.router.add_get('/', handle_index)
-    app.router.add_get('/api/products', get_products)
-    app.router.add_post('/api/add-product', add_product_api)
-    app.router.add_post('/api/delete-product', delete_product_api)
-    app.router.add_post('/api/order', handle_order)
+    app.router.add_post('/api/order', handle_order)  # Faqat buyurtma qabul qilish qoldi
     app.router.add_static('/', path='.', name='static')
     
     runner = web.AppRunner(app)
