@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import json
 from aiogram import Bot, Dispatcher, Router
 from aiogram.filters import Command
 from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
@@ -14,8 +15,28 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 router = Router()
 
-# Mahsulotlarni serverda hamma uchun saqlash bazasi
-PRODUCTS = []
+# Mahsulotlarni faylda saqlash uchun fayl nomi
+DATA_FILE = "products.json"
+
+def load_products():
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logging.error(f"Faylni o'qishda xatolik: {e}")
+            return []
+    return []
+
+def save_products(prods):
+    try:
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(prods, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        logging.error(f"Faylga yozishda xatolik: {e}")
+
+# Mahsulotlar bazasi fayldan yuklanadi
+PRODUCTS = load_products()
 
 # /start buyrug'i - iliq kutib olish va Mini App tugmasi
 @router.message(Command("start"))
@@ -38,41 +59,38 @@ async def cmd_start(message: Message):
         parse_mode="Markdown"
     )
 
-# Aiohttp server handlerlari
 async def handle_index(request):
     return web.FileResponse('index.html')
 
-# Mahsulotlarni olish API
 async def get_products(request):
     return web.json_response(PRODUCTS)
 
-# Mahsulot qo'shish API (Admin uchun)
 async def add_product_api(request):
     try:
         data = await request.json()
         new_prod = {
-            "id": data.get('id', int(asyncio.get_event_loop().time() * 1000)),
+            "id": int(asyncio.get_event_loop().time() * 1000),
             "name": data.get('name'),
             "price": data.get('price'),
             "unit": data.get('unit')
         }
         PRODUCTS.append(new_prod)
+        save_products(PRODUCTS)  # Faylga saqlash
         return web.json_response({"status": "success", "product": new_prod})
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=400)
 
-# Mahsulotni o'chirish API (Admin uchun)
 async def delete_product_api(request):
     try:
         data = await request.json()
         prod_id = data.get('id')
         global PRODUCTS
         PRODUCTS = [p for p in PRODUCTS if p['id'] != prod_id]
+        save_products(PRODUCTS)  # Faylga saqlash
         return web.json_response({"status": "success"})
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=400)
 
-# Buyurtmani qabul qilish API
 async def handle_order(request):
     try:
         data = await request.json()
@@ -84,7 +102,6 @@ async def handle_order(request):
 
         items_text = "\n".join([f"• {item['name']} - {item['qty']} {item['unit']} ({item['price']:,} so'mdan)" for item in items])
         
-        # Mijozga yuboriladigan iliq xabar
         client_message = (
             f"✅ **Buyurtmangiz muvaffaqiyatli qabul qilindi!**\n\n"
             f"📦 **Sizning xaridlaringiz:**\n{items_text}\n\n"
@@ -99,7 +116,6 @@ async def handle_order(request):
             except Exception as e:
                 logging.error(f"Mijozga xabar yuborishda xatolik: {e}")
 
-        # Admingacha yetib boradigan xabar
         admin_message = (
             f"🔔 **YANGI BUYURTMA KELDI!** 🚀\n\n"
             f"👤 **Mijoz:** {user_name} (ID: {user_id})\n"
@@ -121,8 +137,6 @@ async def web_server():
     app.router.add_post('/api/add-product', add_product_api)
     app.router.add_post('/api/delete-product', delete_product_api)
     app.router.add_post('/api/order', handle_order)
-    
-    # Statik fayllar uchun
     app.router.add_static('/', path='.', name='static')
     
     runner = web.AppRunner(app)
