@@ -228,29 +228,38 @@
         let products = [];
         let cart = {};
 
-        // Ma'lumotlarni darhol localStorage dan o'qish (ochib-yopganda darhol chiqishi uchun)
-        function loadProducts() {
+        // Ma'lumotlarni darhol localStorage va server orqali sinxronlash
+        async function loadProducts() {
             let savedProds = localStorage.getItem('tinchlik_products');
             if (savedProds) {
                 try {
                     products = JSON.parse(savedProds);
+                    renderProducts();
                 } catch (e) {
                     products = [];
                 }
             }
-            renderProducts();
 
-            // Serverdan ham tekshirib kelamiz
-            fetch('/api/products')
-                .then(res => res.json())
-                .then(serverProds => {
-                    if (serverProds && serverProds.length > 0) {
-                        products = serverProds;
-                        localStorage.setItem('tinchlik_products', JSON.stringify(products));
-                        renderProducts();
+            try {
+                let res = await fetch('/api/products');
+                let serverProds = await res.json();
+                
+                if (serverProds && serverProds.length > 0) {
+                    products = serverProds;
+                    localStorage.setItem('tinchlik_products', JSON.stringify(products));
+                    renderProducts();
+                } else if (products.length > 0) {
+                    for (let p of products) {
+                        await fetch('/api/add-product', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: p.name, price: p.price, unit: p.unit })
+                        });
                     }
-                })
-                .catch(err => console.log("Serverdan olishda xatolik"));
+                }
+            } catch (e) {
+                console.log("Serverga ulanishda xatolik");
+            }
         }
 
         function renderProducts() {
@@ -346,7 +355,7 @@
             }
         }
 
-        function addProduct() {
+        async function addProduct() {
             let title = document.getElementById('newTitle').value.trim();
             let price = parseFloat(document.getElementById('newPrice').value);
             let unit = document.getElementById('newUnit').value;
@@ -363,33 +372,39 @@
                 unit: unit
             };
 
-            // Avval lokal xotiraga va ekranga darhol chiqaramiz
             products.push(newProd);
             localStorage.setItem('tinchlik_products', JSON.stringify(products));
             renderProducts();
 
-            // Serverga ham yuborib qo'yamiz
-            fetch('/api/add-product', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newProd)
-            }).catch(err => console.log("Serverga yuborishda xatolik"));
+            try {
+                await fetch('/api/add-product', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newProd)
+                });
+            } catch (err) {
+                console.log("Serverga saqlashda xatolik");
+            }
 
             document.getElementById('newTitle').value = '';
             document.getElementById('newPrice').value = '';
         }
 
-        function deleteProduct(id) {
+        async function deleteProduct(id) {
             products = products.filter(p => p.id !== id);
             localStorage.setItem('tinchlik_products', JSON.stringify(products));
             delete cart[id];
             renderProducts();
 
-            fetch('/api/delete-product', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id })
-            }).catch(err => console.log("Serverdan o'chirishda xatolik"));
+            try {
+                await fetch('/api/delete-product', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id })
+                });
+            } catch (err) {
+                console.log("Serverdan o'chirishda xatolik");
+            }
         }
 
         function submitOrder() {
@@ -449,3 +464,5 @@
 
         loadProducts();
     </script>
+</body>
+</html>
