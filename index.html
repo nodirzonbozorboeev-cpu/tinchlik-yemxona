@@ -29,37 +29,6 @@
         .header h2 { margin: 0; color: #2c3e50; font-size: 22px; }
         .header p { margin: 5px 0 0; color: #7f8c8d; font-size: 14px; }
         
-        .admin-panel {
-            background: #fff3cd;
-            border: 1px solid #ffeeba;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        }
-        .admin-panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #856404; }
-        .admin-panel input, .admin-panel select {
-            width: 100%;
-            padding: 10px;
-            margin: 6px 0;
-            border: 1px solid #ced4da;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-        .admin-panel button {
-            width: 100%;
-            background: #f39c12;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 8px;
-            font-size: 15px;
-        }
-
         .product-card {
             background: var(--card-bg);
             padding: 16px;
@@ -71,7 +40,7 @@
             gap: 12px;
             border: 1px solid #eef2f7;
         }
-        .product-info h3 { margin: 0 0 4px 0; font-size: 18px; color: #333; }
+        .product-info h3 { margin: 0 0 4px 0; font-size: 17px; color: #333; }
         .product-info p { margin: 0; color: #e67e22; font-weight: bold; font-size: 15px; }
         
         .controls {
@@ -101,16 +70,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        button.btn-danger {
-            background-color: var(--danger-color);
-            color: white;
-            padding: 6px 12px;
-            font-size: 13px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
         }
         input.kg-input {
             width: 100px;
@@ -191,18 +150,6 @@
         <p>Sifatli va hamyonbop yem-hasak mahsulotlari</p>
     </div>
 
-    <!-- Admin Panel -->
-    <div id="adminPanel" class="admin-panel" style="display:none;">
-        <h3>➕ Yangi mahsulot qo'shish (Admin)</h3>
-        <input type="text" id="newTitle" placeholder="Mahsulot nomi (masalan: Bug'doy)">
-        <input type="number" id="newPrice" placeholder="Narxi (so'mda)">
-        <select id="newUnit">
-            <option value="kg">Kg (Qo'lda kiritish)</option>
-            <option value="qop">Qop (+/- tugma)</option>
-        </select>
-        <button onclick="addProduct()">Mahsulotni qo'shish</button>
-    </div>
-
     <div id="productsList"></div>
 
     <div class="cart-bar">
@@ -221,66 +168,47 @@
         tg.expand();
 
         const user = tg.initDataUnsafe?.user;
-        if (user && user.id === 8630108906) {
-            document.getElementById('adminPanel').style.display = 'block';
-        }
 
-        let products = [];
+        // Barcha mahsulotlar o'zgarmas bazasi (Siz yuborgan ma'lumotlar asosida)
+        const products = [
+            { id: 1, name: "Kepak Motabar (25kg qop)", price: 85000, unit: "qop" },
+            { id: 2, name: "Kepak Mayda (25kg qop)", price: 85000, unit: "qop" },
+            { id: 3, name: "MasterFeed (Buqalar uchun - 40kg qop)", price: 200000, unit: "qop" },
+            { id: 4, name: "MasterFeed (Qoylar uchun - 40kg qop)", price: 200000, unit: "qop" },
+            { id: 5, name: "MasterFeed (Sigirlar uchun - 40kg qop)", price: 225000, unit: "qop" },
+            { id: 6, name: "MasterFeed (Quyonlar uchun)", price: 6000, unit: "kg" },
+            { id: 7, name: "MasterFeed (Broyler 1,2,3)", price: 10000, unit: "kg" },
+            { id: 8, name: "ArganicFeed (Buqa va Sigirlar uchun - 40kg qop)", price: 175000, unit: "qop" },
+            { id: 9, name: "Xusnidin Chorvador (Buqalar uchun - 40kg)", price: 240000, unit: "qop" },
+            { id: 10, name: "Silyos (20kg qop)", price: 18000, unit: "qop" },
+            { id: 11, name: "Kunjara", price: 6500, unit: "kg" },
+            { id: 12, name: "Raps Shrot", price: 6000, unit: "kg" },
+            { id: 13, name: "Mayda Tuz (1kg pachka)", price: 2000, unit: "dona" },
+            { id: 14, name: "Vitamin tuz", price: 12000, unit: "dona" },
+            { id: 15, name: "Makka Jo'xori", price: 4000, unit: "kg" },
+            { id: 16, name: "Arpa", price: 4000, unit: "kg" },
+            { id: 17, name: "Bug'doy", price: 4500, unit: "kg" },
+            { id: 18, name: "555 Omuxta yem (Qo'ylar uchun)", price: 5000, unit: "kg" },
+            { id: 19, name: "555 Omuxta yem (Tovuqlar uchun)", price: 5000, unit: "kg" }
+        ];
+
         let cart = {};
-
-        // Telegram CloudStorage orqali ma'lumotlarni yuklash
-        function loadProducts() {
-            tg.CloudStorage.getItem('tinchlik_products', (err, value) => {
-                if (!err && value) {
-                    try {
-                        products = JSON.parse(value);
-                    } catch (e) {
-                        products = [];
-                    }
-                } else {
-                    let localProds = localStorage.getItem('tinchlik_products');
-                    if (localProds) {
-                        products = JSON.parse(localProds);
-                    } else {
-                        products = [];
-                    }
-                }
-                renderProducts();
-            });
-        }
-
-        // Telegram bulutiga saqlash
-        function saveProductsToCloud() {
-            let dataStr = JSON.stringify(products);
-            localStorage.setItem('tinchlik_products', dataStr);
-            tg.CloudStorage.setItem('tinchlik_products', dataStr, (err, saved) => {
-                if (err) {
-                    console.log("Bulutga saqlashda xatolik");
-                }
-            });
-        }
 
         function renderProducts() {
             const list = document.getElementById('productsList');
             list.innerHTML = '';
             
-            if (products.length === 0) {
-                list.innerHTML = '<p style="text-align: center; color: #7f8c8d; font-size: 15px;">Hozircha mahsulotlar mavjud emas.</p>';
-                updateTotal();
-                return;
-            }
-
             products.forEach(p => {
                 let currentQty = (cart[p.id] && cart[p.id] > 0) ? cart[p.id] : 0;
                 let card = document.createElement('div');
                 card.className = 'product-card';
                 
                 let controlHtml = '';
-                if (p.unit === 'kg') {
+                if (p.unit === 'kg' || p.unit === 'dona') {
                     controlHtml = `
                         <div class="qty-control">
-                            <span style="font-size: 14px; color: #64748b;">Kg miqdori:</span>
-                            <input type="number" class="kg-input" value="${currentQty > 0 ? currentQty : ''}" placeholder="0 kg" min="0" oninput="updateKgInput(${p.id}, this.value)">
+                            <span style="font-size: 14px; color: #64748b;">Miqdori (${p.unit}):</span>
+                            <input type="number" class="kg-input" value="${currentQty > 0 ? currentQty : ''}" placeholder="0" min="0" oninput="updateKgInput(${p.id}, this.value)">
                         </div>
                     `;
                 } else {
@@ -300,7 +228,6 @@
                     </div>
                     <div class="controls">
                         ${controlHtml}
-                        ${user && user.id === 8630108906 ? `<button class="btn-danger" onclick="deleteProduct(${p.id})">O'chirish</button>` : ''}
                     </div>
                 `;
                 list.appendChild(card);
@@ -351,38 +278,6 @@
             } else {
                 btn.setAttribute('disabled', 'true');
             }
-        }
-
-        function addProduct() {
-            let title = document.getElementById('newTitle').value.trim();
-            let price = parseFloat(document.getElementById('newPrice').value);
-            let unit = document.getElementById('newUnit').value;
-
-            if (!title || !price) {
-                alert("Mahsulot nomi va narxini to'liq kiriting!");
-                return;
-            }
-
-            let newProd = {
-                id: Date.now(),
-                name: title,
-                price: price,
-                unit: unit
-            };
-
-            products.push(newProd);
-            saveProductsToCloud(); // Telegram bulutiga saqlash
-            renderProducts();
-
-            document.getElementById('newTitle').value = '';
-            document.getElementById('newPrice').value = '';
-        }
-
-        function deleteProduct(id) {
-            products = products.filter(p => p.id !== id);
-            saveProductsToCloud(); // Telegram bulutida yangilash
-            delete cart[id];
-            renderProducts();
         }
 
         function submitOrder() {
@@ -440,7 +335,7 @@
             });
         }
 
-        loadProducts();
+        renderProducts();
     </script>
 </body>
 </html>
