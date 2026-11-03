@@ -7,7 +7,6 @@ from aiogram.filters import Command
 from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
 
-# Sening ma'lumotlaring
 TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE" 
 ADMIN_ID = 8630108906
 
@@ -15,30 +14,28 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 router = Router()
 
-# Mahsulotlarni faylda saqlash uchun fayl nomi
 DATA_FILE = "products.json"
 
+# Fayldan o'qish
 def load_products():
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                content = f.read()
+                if content.strip():
+                    return json.loads(content)
         except Exception as e:
-            logging.error(f"Faylni o'qishda xatolik: {e}")
-            return []
+            logging.error(f"O'qish xatoligi: {e}")
     return []
 
+# Faylga yozish
 def save_products(prods):
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(prods, f, ensure_ascii=False, indent=4)
     except Exception as e:
-        logging.error(f"Faylga yozishda xatolik: {e}")
+        logging.error(f"Yozish xatoligi: {e}")
 
-# Mahsulotlar bazasi fayldan yuklanadi
-PRODUCTS = load_products()
-
-# /start buyrug'i - iliq kutib olish va Mini App tugmasi
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     keyboard = InlineKeyboardMarkup(
@@ -63,19 +60,23 @@ async def handle_index(request):
     return web.FileResponse('index.html')
 
 async def get_products(request):
-    return web.json_response(PRODUCTS)
+    prods = load_products()
+    return web.json_response(prods)
 
 async def add_product_api(request):
     try:
         data = await request.json()
+        prods = load_products()
+        
         new_prod = {
             "id": int(asyncio.get_event_loop().time() * 1000),
             "name": data.get('name'),
             "price": data.get('price'),
             "unit": data.get('unit')
         }
-        PRODUCTS.append(new_prod)
-        save_products(PRODUCTS)  # Faylga saqlash
+        prods.append(new_prod)
+        save_products(prods)  # Darhol faylga saqlaymiz
+        
         return web.json_response({"status": "success", "product": new_prod})
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=400)
@@ -84,9 +85,11 @@ async def delete_product_api(request):
     try:
         data = await request.json()
         prod_id = data.get('id')
-        global PRODUCTS
-        PRODUCTS = [p for p in PRODUCTS if p['id'] != prod_id]
-        save_products(PRODUCTS)  # Faylga saqlash
+        prods = load_products()
+        
+        prods = [p for p in prods if p['id'] != prod_id]
+        save_products(prods)  # Yangilangan ro'yxatni saqlaymiz
+        
         return web.json_response({"status": "success"})
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=400)
