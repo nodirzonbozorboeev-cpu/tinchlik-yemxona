@@ -228,38 +228,36 @@
         let products = [];
         let cart = {};
 
-        // Ma'lumotlarni darhol localStorage va server orqali sinxronlash
-        async function loadProducts() {
-            let savedProds = localStorage.getItem('tinchlik_products');
-            if (savedProds) {
-                try {
-                    products = JSON.parse(savedProds);
-                    renderProducts();
-                } catch (e) {
-                    products = [];
-                }
-            }
-
-            try {
-                let res = await fetch('/api/products');
-                let serverProds = await res.json();
-                
-                if (serverProds && serverProds.length > 0) {
-                    products = serverProds;
-                    localStorage.setItem('tinchlik_products', JSON.stringify(products));
-                    renderProducts();
-                } else if (products.length > 0) {
-                    for (let p of products) {
-                        await fetch('/api/add-product', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ name: p.name, price: p.price, unit: p.unit })
-                        });
+        // Telegram CloudStorage orqali ma'lumotlarni yuklash
+        function loadProducts() {
+            tg.CloudStorage.getItem('tinchlik_products', (err, value) => {
+                if (!err && value) {
+                    try {
+                        products = JSON.parse(value);
+                    } catch (e) {
+                        products = [];
+                    }
+                } else {
+                    let localProds = localStorage.getItem('tinchlik_products');
+                    if (localProds) {
+                        products = JSON.parse(localProds);
+                    } else {
+                        products = [];
                     }
                 }
-            } catch (e) {
-                console.log("Serverga ulanishda xatolik");
-            }
+                renderProducts();
+            });
+        }
+
+        // Telegram bulutiga saqlash
+        function saveProductsToCloud() {
+            let dataStr = JSON.stringify(products);
+            localStorage.setItem('tinchlik_products', dataStr);
+            tg.CloudStorage.setItem('tinchlik_products', dataStr, (err, saved) => {
+                if (err) {
+                    console.log("Bulutga saqlashda xatolik");
+                }
+            });
         }
 
         function renderProducts() {
@@ -355,7 +353,7 @@
             }
         }
 
-        async function addProduct() {
+        function addProduct() {
             let title = document.getElementById('newTitle').value.trim();
             let price = parseFloat(document.getElementById('newPrice').value);
             let unit = document.getElementById('newUnit').value;
@@ -373,38 +371,18 @@
             };
 
             products.push(newProd);
-            localStorage.setItem('tinchlik_products', JSON.stringify(products));
+            saveProductsToCloud(); // Telegram bulutiga saqlash
             renderProducts();
-
-            try {
-                await fetch('/api/add-product', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newProd)
-                });
-            } catch (err) {
-                console.log("Serverga saqlashda xatolik");
-            }
 
             document.getElementById('newTitle').value = '';
             document.getElementById('newPrice').value = '';
         }
 
-        async function deleteProduct(id) {
+        function deleteProduct(id) {
             products = products.filter(p => p.id !== id);
-            localStorage.setItem('tinchlik_products', JSON.stringify(products));
+            saveProductsToCloud(); // Telegram bulutida yangilash
             delete cart[id];
             renderProducts();
-
-            try {
-                await fetch('/api/delete-product', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: id })
-                });
-            } catch (err) {
-                console.log("Serverdan o'chirishda xatolik");
-            }
         }
 
         function submitOrder() {
