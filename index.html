@@ -225,10 +225,19 @@
             document.getElementById('adminPanel').style.display = 'block';
         }
 
-        // Boshlang'ich mahsulotlar olib tashlandi, endi ro'yxat bo'sh boshlanadi
         let products = [];
-
         let cart = {};
+
+        // Serverdan mahsulotlarni tortib kelish
+        async function loadProducts() {
+            try {
+                let res = await fetch('/api/products');
+                products = await res.json();
+                renderProducts();
+            } catch (e) {
+                console.error("Mahsulotlarni yuklashda xatolik:", e);
+            }
+        }
 
         function renderProducts() {
             const list = document.getElementById('productsList');
@@ -323,7 +332,7 @@
             }
         }
 
-        function addProduct() {
+        async function addProduct() {
             let title = document.getElementById('newTitle').value.trim();
             let price = parseFloat(document.getElementById('newPrice').value);
             let unit = document.getElementById('newUnit').value;
@@ -334,22 +343,39 @@
             }
 
             let newProd = {
-                id: Date.now(),
                 name: title,
                 price: price,
                 unit: unit
             };
-            products.push(newProd);
-            renderProducts();
 
-            document.getElementById('newTitle').value = '';
-            document.getElementById('newPrice').value = '';
+            let res = await fetch('/api/add-product', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newProd)
+            });
+
+            if (res.ok) {
+                document.getElementById('newTitle').value = '';
+                document.getElementById('newPrice').value = '';
+                loadProducts();
+            } else {
+                alert("Mahsulot qo'shishda xatolik yuz berdi!");
+            }
         }
 
-        function deleteProduct(id) {
-            products = products.filter(p => p.id !== id);
-            delete cart[id];
-            renderProducts();
+        async function deleteProduct(id) {
+            let res = await fetch('/api/delete-product', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+
+            if (res.ok) {
+                delete cart[id];
+                loadProducts();
+            } else {
+                alert("O'chirishda xatolik yuz berdi!");
+            }
         }
 
         function submitOrder() {
@@ -399,7 +425,7 @@
                 cart = {};
                 document.getElementById('clientPhone').value = '';
                 checkPhone();
-                renderProducts();
+                loadProducts();
                 tg.close();
             })
             .catch(err => {
@@ -407,7 +433,8 @@
             });
         }
 
-        renderProducts();
+        // Ishga tushganda mahsulotlarni yuklash
+        loadProducts();
     </script>
 </body>
 </html>
