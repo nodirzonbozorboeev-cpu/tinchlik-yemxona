@@ -38,9 +38,8 @@ async def cmd_start(message: Message):
 @router.message(F.photo)
 async def handle_photo(message: Message):
     if message.from_user.id == ADMIN_ID:
-        return # Admin o'zi rasm yuborsa e'tibor bermaslik
+        return
     
-    # Chekni adminga yo'naltirish
     await bot.send_message(
         chat_id=ADMIN_ID,
         text=f"📥 **Yangi to'lov cheki keldi!**\n👤 Mijoz: {message.from_user.full_name} (ID: `{message.from_user.id}`)\nUsername: @{message.from_user.username or 'yoq'}",
@@ -65,7 +64,6 @@ async def handle_order(request):
 
         items_text = "\n".join([f"• {item['name']} - {item['qty']} {item['unit']} ({item['price']:,} so'mdan)" for item in items])
         
-        # Mijozga yuboriladigan xabar
         if payment_type == 'card':
             payment_text = (
                 f"💳 **To'lov turi:** Karta orqali\n"
@@ -91,7 +89,6 @@ async def handle_order(request):
             except Exception as e:
                 logging.error(f"Mijozga xabar yuborishda xatolik: {e}")
 
-        # Adminga yuboriladigan xabar
         admin_payment_label = "💳 Karta orqali (Chek kutilmoqda)" if payment_type == 'card' else "💵 Naqd pul"
         admin_message = (
             f"🔔 **YANGI BUYURTMA KELDI!** 🚀\n\n"

@@ -24,9 +24,6 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
             transition: transform 0.2s;
         }
-        .card:active {
-            transform: scale(0.98);
-        }
         .product-price {
             color: #198754;
             font-weight: bold;
@@ -43,6 +40,11 @@
             z-index: 1000;
             border-top-left-radius: 16px;
             border-top-right-radius: 16px;
+        }
+        .kg-input {
+            width: 80px;
+            text-align: center;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -128,27 +130,26 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Foydalanuvchi yuborgan to'liq mahsulotlar ro'yxati
         const products = [
-            { id: 1, name: "Kepak Motabar", unit: "qop (25kg)", price: 85000 },
-            { id: 2, name: "Kepak Mayda", unit: "qop (25kg)", price: 85000 },
-            { id: 3, name: "MasterFeed (Buqalar uchun)", unit: "qop (40kg)", price: 200000 },
-            { id: 4, name: "MasterFeed (Qoylar uchun)", unit: "qop (40kg)", price: 200000 },
-            { id: 5, name: "MasterFeed (Sigirlar uchun)", unit: "qop (40kg)", price: 225000 },
-            { id: 6, name: "MasterFeed (Quyonlar uchun)", unit: "kg", price: 6000 },
-            { id: 7, name: "MasterFeed (Bruler 1,2,3)", unit: "kg", price: 10000 },
-            { id: 8, name: "ArganicFeed (Buqa va Sigirlar uchun)", unit: "qop (40kg)", price: 175000 },
-            { id: 9, name: "Xusnidin Chorvador (Buqalar uchun)", unit: "qop (40kg)", price: 240000 },
-            { id: 10, name: "Silyos", unit: "qop (20kg)", price: 18000 },
-            { id: 11, name: "Kunjara", unit: "kg", price: 6500 },
-            { id: 12, name: "Raps Shrot", unit: "kg", price: 6000 },
-            { id: 13, name: "Mayda Tuz", unit: "pachka (1kg)", price: 2000 },
-            { id: 14, name: "Vitamin tuz", unit: "dona", price: 12000 },
-            { id: 15, name: "Makka Johori", unit: "kg", price: 4000 },
-            { id: 16, name: "Arpa", unit: "kg", price: 4000 },
-            { id: 17, name: "Bug'doy", unit: "kg", price: 4500 },
-            { id: 18, name: "555 Omuxta yem (Qoylar uchun)", unit: "kg", price: 5000 },
-            { id: 19, name: "555 Omuxta yem (Tovuqlar uchun)", unit: "kg", price: 5000 }
+            { id: 1, name: "Kepak Motabar", unit: "qop (25kg)", price: 85000, type: "qop" },
+            { id: 2, name: "Kepak Mayda", unit: "qop (25kg)", price: 85000, type: "qop" },
+            { id: 3, name: "MasterFeed (Buqalar uchun)", unit: "qop (40kg)", price: 200000, type: "qop" },
+            { id: 4, name: "MasterFeed (Qoylar uchun)", unit: "qop (40kg)", price: 200000, type: "qop" },
+            { id: 5, name: "MasterFeed (Sigirlar uchun)", unit: "qop (40kg)", price: 225000, type: "qop" },
+            { id: 6, name: "MasterFeed (Quyonlar uchun)", unit: "kg", price: 6000, type: "kg" },
+            { id: 7, name: "MasterFeed (Bruler 1,2,3)", unit: "kg", price: 10000, type: "kg" },
+            { id: 8, name: "ArganicFeed (Buqa va Sigirlar uchun)", unit: "qop (40kg)", price: 175000, type: "qop" },
+            { id: 9, name: "Xusnidin Chorvador (Buqalar uchun)", unit: "qop (40kg)", price: 240000, type: "qop" },
+            { id: 10, name: "Silyos", unit: "qop (20kg)", price: 18000, type: "qop" },
+            { id: 11, name: "Kunjara", unit: "kg", price: 6500, type: "kg" },
+            { id: 12, name: "Raps Shrot", unit: "kg", price: 6000, type: "kg" },
+            { id: 13, name: "Mayda Tuz", unit: "pachka (1kg)", price: 2000, type: "kg" },
+            { id: 14, name: "Vitamin tuz", unit: "dona", price: 12000, type: "kg" },
+            { id: 15, name: "Makka Johori", unit: "kg", price: 4000, type: "kg" },
+            { id: 16, name: "Arpa", unit: "kg", price: 4000, type: "kg" },
+            { id: 17, name: "Bug'doy", unit: "kg", price: 4500, type: "kg" },
+            { id: 18, name: "555 Omuxta yem (Qoylar uchun)", unit: "kg", price: 5000, type: "kg" },
+            { id: 19, name: "555 Omuxta yem (Tovuqlar uchun)", unit: "kg", price: 5000, type: "kg" }
         ];
 
         let cart = {};
@@ -158,6 +159,27 @@
             listEl.innerHTML = '';
             products.forEach(p => {
                 let qty = cart[p.id] || 0;
+                let controlHtml = '';
+
+                if (p.type === 'qop') {
+                    // Qopdagilar uchun + / - tugmalar
+                    controlHtml = `
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-success btn-sm px-2 py-1 rounded-circle fw-bold" onclick="updateQty(${p.id}, -1)">-</button>
+                            <span class="fw-bold px-1" id="qty-${p.id}">${qty}</span>
+                            <button class="btn btn-success btn-sm px-2 py-1 rounded-circle fw-bold" onclick="updateQty(${p.id}, 1)">+</button>
+                        </div>
+                    `;
+                } else {
+                    // KG yoki dona (qo'lda yoziladigan) lar uchun input katak
+                    controlHtml = `
+                        <div class="d-flex align-items-center gap-1">
+                            <input type="number" min="0" class="form-control form-control-sm kg-input" id="qty-${p.id}" value="${qty}" oninput="setKgQty(${p.id}, this.value)" placeholder="0">
+                            <span class="small text-muted">${p.unit}</span>
+                        </div>
+                    `;
+                }
+
                 listEl.innerHTML += `
                     <div class="col-12">
                         <div class="card p-3">
@@ -167,11 +189,7 @@
                                     <span class="text-muted small">O'lchovi: ${p.unit}</span>
                                     <div class="product-price mt-1">${p.price.toLocaleString()} so'm</div>
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <button class="btn btn-outline-success btn-sm px-2 py-1 rounded-circle fw-bold" onclick="updateQty(${p.id}, -1)">-</button>
-                                    <span class="fw-bold px-1" id="qty-${p.id}">${qty}</span>
-                                    <button class="btn btn-success btn-sm px-2 py-1 rounded-circle fw-bold" onclick="updateQty(${p.id}, 1)">+</button>
-                                </div>
+                                <div>${controlHtml}</div>
                             </div>
                         </div>
                     </div>
@@ -185,7 +203,18 @@
             if (cart[id] < 0) cart[id] = 0;
             if (cart[id] === 0) delete cart[id];
 
-            document.getElementById(`qty-${id}`).innerText = cart[id] || 0;
+            let el = document.getElementById(`qty-${id}`);
+            if (el) el.innerText = cart[id] || 0;
+            updateCartBar();
+        }
+
+        function setKgQty(id, value) {
+            let val = parseInt(value);
+            if (isNaN(val) || val <= 0) {
+                delete cart[id];
+            } else {
+                cart[id] = val;
+            }
             updateCartBar();
         }
 
