@@ -1,13 +1,12 @@
 import asyncio
 import logging
 import os
-import json
 from aiogram import Bot, Dispatcher, Router
 from aiogram.filters import Command
 from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
 
-# O'zingizning token va ID laringiz
+# Token va Admin ID
 TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE" 
 ADMIN_ID = 8630108906
 
@@ -35,11 +34,9 @@ async def cmd_start(message: Message):
         parse_mode="Markdown"
     )
 
-# Frontendni (Katalogni) ochib beruvchi funksiya
 async def handle_index(request):
     return web.FileResponse('index.html')
 
-# Mijoz buyurtma berganda ishlaydigan funksiya
 async def handle_order(request):
     try:
         data = await request.json()
@@ -49,10 +46,8 @@ async def handle_order(request):
         items = data.get('items', [])
         total = data.get('total', 0)
 
-        # Mahsulotlar ro'yxatini chiroyli matn qilish
         items_text = "\n".join([f"• {item['name']} - {item['qty']} {item['unit']} ({item['price']:,} so'mdan)" for item in items])
         
-        # Mijozning o'ziga boradigan xabar
         client_message = (
             f"✅ **Buyurtmangiz muvaffaqiyatli qabul qilindi!**\n\n"
             f"📦 **Sizning xaridlaringiz:**\n{items_text}\n\n"
@@ -67,7 +62,6 @@ async def handle_order(request):
             except Exception as e:
                 logging.error(f"Mijozga xabar yuborishda xatolik: {e}")
 
-        # Sizga (Adminga) keladigan xabar
         admin_message = (
             f"🔔 **YANGI BUYURTMA KELDI!** 🚀\n\n"
             f"👤 **Mijoz:** {user_name} (ID: {user_id})\n"
@@ -82,11 +76,10 @@ async def handle_order(request):
         logging.error(f"Buyurtmani qayta ishlashda xatolik: {e}")
         return web.json_response({"status": "error", "message": str(e)}, status=400)
 
-# Veb serverni sozlash (Ortiqcha API'larsiz)
 async def web_server():
     app = web.Application()
     app.router.add_get('/', handle_index)
-    app.router.add_post('/api/order', handle_order)  # Faqat buyurtma qabul qilish qoldi
+    app.router.add_post('/api/order', handle_order)
     app.router.add_static('/', path='.', name='static')
     
     runner = web.AppRunner(app)
