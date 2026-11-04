@@ -3,292 +3,456 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tinchlik Yemxona - Rasmiy Do'kon</title>
+    <title>Tinchlik Yemxona - Rasmiy Katalog</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: #f4f6f9;
-            --text-color: #2c3e50;
+            --primary-color: #2e7d32;
+            --primary-dark: #1b5e20;
+            --accent-color: #ff9800;
+            --bg-color: #f4f6f8;
             --card-bg: #ffffff;
-            --primary-color: #27ae60;
-            --button-hover: #219653;
-            --danger-color: #e74c3c;
+            --text-color: #333333;
+            --text-light: #666666;
+            --radius: 12px;
         }
-        body {
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
             background-color: var(--bg-color);
             color: var(--text-color);
-            margin: 0;
-            padding: 15px;
-            padding-bottom: 140px;
+            padding-bottom: 90px;
         }
-        .header {
+
+        header {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+            color: white;
+            padding: 20px 16px;
             text-align: center;
-            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        .header h2 { margin: 0; color: #2c3e50; font-size: 22px; }
-        .header p { margin: 5px 0 0; color: #7f8c8d; font-size: 14px; }
-        
+
+        header h1 {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .container {
+            padding: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 16px 0 10px 4px;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
         .product-card {
             background: var(--card-bg);
-            padding: 16px;
-            border-radius: 14px;
-            margin-bottom: 14px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.04);
+            border-radius: var(--radius);
+            padding: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            border: 1px solid #eef2f7;
+            justify-content: space-between;
+            border: 1px solid #eaeaea;
         }
-        .product-info h3 { margin: 0 0 4px 0; font-size: 17px; color: #333; }
-        .product-info p { margin: 0; color: #e67e22; font-weight: bold; font-size: 15px; }
-        
-        .controls {
+
+        .product-info h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text-color);
+        }
+
+        .product-footer {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #f8fafc;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
+            margin-top: 10px;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 10px;
         }
-        .qty-control {
+
+        .price {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--primary-dark);
+        }
+
+        .counter {
             display: flex;
             align-items: center;
             gap: 8px;
+            background: #f1f8f5;
+            border-radius: 8px;
+            padding: 4px;
         }
-        button.btn-action {
-            background-color: #3498db;
+
+        .counter button {
+            background: var(--primary-color);
             color: white;
             border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
             font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        input.kg-input {
-            width: 100px;
-            text-align: center;
-            padding: 8px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            color: #1e293b;
-        }
-        .qop-count {
-            font-size: 16px;
-            font-weight: bold;
-            min-width: 35px;
-            text-align: center;
-            color: #1e293b;
+            transition: background 0.2s;
         }
 
+        .counter button:active {
+            background: var(--primary-dark);
+        }
+
+        .counter span {
+            font-size: 14px;
+            font-weight: 600;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        /* Savatcha paneli */
         .cart-bar {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            background: #ffffff;
-            padding: 15px;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            border-top: 1px solid #e2e8f0;
-            border-radius: 20px 20px 0 0;
-        }
-        .phone-input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            font-size: 15px;
-            box-sizing: border-box;
-            outline: none;
-        }
-        .phone-input:focus { border-color: #3498db; }
-        .cart-row {
+            background: white;
+            padding: 14px 16px;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            z-index: 1000;
         }
-        .total-price {
-            font-size: 17px;
-            font-weight: bold;
-            color: #2c3e50;
+
+        .cart-info {
+            font-size: 13px;
+            color: var(--text-light);
         }
-        button.btn-submit {
-            background-color: var(--primary-color);
+
+        .cart-total {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .checkout-btn {
+            background: var(--accent-color);
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255, 152, 0, 0.3);
+            transition: transform 0.1s;
+        }
+
+        .checkout-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* Modal oyna */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 600px;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            padding: 20px;
+            max-height: 85vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+            color: var(--primary-dark);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .cart-items-list {
+            margin-bottom: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .cart-item-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-light);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .submit-order-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
-        }
-        button.btn-submit:active { background-color: var(--button-hover); }
-        button.btn-submit:disabled {
-            background-color: #bdc3c7;
-            box-shadow: none;
-            cursor: not-allowed;
-            opacity: 0.6;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2>🌾 Tinchlik Yemxona</h2>
-        <p>Sifatli va hamyonbop yem-hasak mahsulotlari</p>
+    <header>
+        <h1>🌾 Tinchlik Yemxona</h1>
+        <p>Sifatli yem-hasak va ozuqalar kafolati</p>
+    </header>
+
+    <div class="container">
+        <div class="section-title">📦 Barcha mahsulotlar va narxlar</div>
+        <div class="products-grid" id="products-container">
+            <!-- JavaScript orqali mahsulotlar chiqariladi -->
+        </div>
     </div>
 
-    <div id="productsList"></div>
+    <!-- Pastki savatcha paneli -->
+    <div class="cart-bar" id="cart-bar" style="display: none;">
+        <div>
+            <div class="cart-info" id="cart-count">0 ta mahsulot</div>
+            <div class="cart-total" id="cart-total">0 so'm</div>
+        </div>
+        <button class="checkout-btn" onclick="openModal()">Buyurtma berish 🛒</button>
+    </div>
 
-    <div class="cart-bar">
-        <input type="tel" id="clientPhone" class="phone-input" placeholder="📞 Telefon raqamingiz (+998 90 123 45 67)" oninput="checkPhone()">
-        <div class="cart-row">
-            <div class="total-price">
-                Jami: <span id="totalSum">0</span> so'm
+    <!-- Buyurtmani rasmiylashtirish oynasi -->
+    <div class="modal" id="order-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Buyurtmani tasdiqlash</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
-            <button class="btn-submit" id="submitBtn" onclick="submitOrder()" disabled>Buyurtma berish 🚀</button>
+            <div class="cart-items-list" id="modal-cart-items"></div>
+            
+            <div class="form-group">
+                <label>Ism familiyangiz:</label>
+                <input type="text" id="user-name-input" placeholder="Masalan: Anvar Toshmatov">
+            </div>
+            <div class="form-group">
+                <label>Telefon raqamingiz:</label>
+                <input type="tel" id="phone-input" value="+998 " placeholder="+998 90 123 45 67">
+            </div>
+            <button class="submit-order-btn" onclick="sendOrder()">Buyurtmani yuborish 🚀</button>
         </div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready();
         tg.expand();
 
-        const user = tg.initDataUnsafe?.user;
-
-        // Barcha mahsulotlar ro'yxati
+        // Siz yuborgan aniq mahsulotlar ro'yxati va narxlari
         const products = [
-            { id: 1, name: "Kepak Motabar (25kg qop)", price: 85000, unit: "qop" },
-            { id: 2, name: "Kepak Mayda (25kg qop)", price: 85000, unit: "qop" },
-            { id: 3, name: "MasterFeed (Buqalar uchun - 40kg qop)", price: 200000, unit: "qop" },
-            { id: 4, name: "MasterFeed (Qoylar uchun - 40kg qop)", price: 200000, unit: "qop" },
-            { id: 5, name: "MasterFeed (Sigirlar uchun - 40kg qop)", price: 225000, unit: "qop" },
+            { id: 1, name: "Kepak Motabar", price: 85000, unit: "qop (25kg)" },
+            { id: 2, name: "Kepak Mayda", price: 85000, unit: "qop (25kg)" },
+            { id: 3, name: "MasterFeed (Buqalar uchun)", price: 200000, unit: "qop (40kg)" },
+            { id: 4, name: "MasterFeed (Qoylar uchun)", price: 200000, unit: "qop (40kg)" },
+            { id: 5, name: "MasterFeed (Sigirlar uchun)", price: 225000, unit: "qop (40kg)" },
             { id: 6, name: "MasterFeed (Quyonlar uchun)", price: 6000, unit: "kg" },
-            { id: 7, name: "MasterFeed (Broyler 1,2,3)", price: 10000, unit: "kg" },
-            { id: 8, name: "ArganicFeed (Buqa va Sigirlar uchun - 40kg qop)", price: 175000, unit: "qop" },
-            { id: 9, name: "Xusnidin Chorvador (Buqalar uchun - 40kg)", price: 240000, unit: "qop" },
-            { id: 10, name: "Silyos (20kg qop)", price: 18000, unit: "qop" },
+            { id: 7, name: "MasterFeed (Bruler 1,2,3)", price: 10000, unit: "kg" },
+            { id: 8, name: "ArganicFeed (Buqa va Sigirlar uchun)", price: 175000, unit: "qop (40kg)" },
+            { id: 9, name: "Xusnidin Chorvador (Buqalar uchun)", price: 240000, unit: "qop (40kg)" },
+            { id: 10, name: "Silyos", price: 18000, unit: "qop (20kg)" },
             { id: 11, name: "Kunjara", price: 6500, unit: "kg" },
             { id: 12, name: "Raps Shrot", price: 6000, unit: "kg" },
-            { id: 13, name: "Mayda Tuz (1kg pachka)", price: 2000, unit: "dona" },
+            { id: 13, name: "Mayda Tuz", price: 2000, unit: "pachka (1kg)" },
             { id: 14, name: "Vitamin tuz", price: 12000, unit: "dona" },
-            { id: 15, name: "Makka Jo'xori", price: 4000, unit: "kg" },
+            { id: 15, name: "Makka Johori", price: 4000, unit: "kg" },
             { id: 16, name: "Arpa", price: 4000, unit: "kg" },
             { id: 17, name: "Bug'doy", price: 4500, unit: "kg" },
-            { id: 18, name: "555 Omuxta yem (Qo'ylar uchun)", price: 5000, unit: "kg" },
+            { id: 18, name: "555 Omuxta yem (Qoylar uchun)", price: 5000, unit: "kg" },
             { id: 19, name: "555 Omuxta yem (Tovuqlar uchun)", price: 5000, unit: "kg" }
         ];
 
         let cart = {};
 
         function renderProducts() {
-            const list = document.getElementById('productsList');
-            list.innerHTML = '';
-            
-            if (!products || products.length === 0) {
-                list.innerHTML = '<p style="text-align: center; color: #7f8c8d;">Mahsulotlar topilmadi.</p>';
-                return;
-            }
-
-            products.forEach(p => {
-                let currentQty = (cart[p.id] && cart[p.id] > 0) ? cart[p.id] : 0;
-                let card = document.createElement('div');
-                card.className = 'product-card';
-                
-                let controlHtml = '';
-                if (p.unit === 'kg' || p.unit === 'dona') {
-                    controlHtml = `
-                        <div class="qty-control">
-                            <span style="font-size: 14px; color: #64748b;">Miqdori (${p.unit}):</span>
-                            <input type="number" class="kg-input" value="${currentQty > 0 ? currentQty : ''}" placeholder="0" min="0" oninput="updateKgInput(${p.id}, this.value)">
-                        </div>
-                    `;
-                } else {
-                    controlHtml = `
-                        <div class="qty-control">
-                            <button class="btn-action" onclick="changeQop(${p.id}, -1)">-</button>
-                            <span class="qop-count">${currentQty}</span> <span style="font-size: 14px; color: #64748b;">qop</span>
-                            <button class="btn-action" onclick="changeQop(${p.id}, 1)">+</button>
-                        </div>
-                    `;
-                }
-
-                card.innerHTML = `
+            const container = document.getElementById('products-container');
+            container.innerHTML = products.map(p => `
+                <div class="product-card">
                     <div class="product-info">
                         <h3>${p.name}</h3>
-                        <p>${p.price.toLocaleString()} so'm / ${p.unit}</p>
                     </div>
-                    <div class="controls">
-                        ${controlHtml}
+                    <div class="product-footer">
+                        <div class="price">${p.price.toLocaleString()} so'm / ${p.unit}</div>
+                        <div class="counter">
+                            <button onclick="changeQty(${p.id}, -1)">-</button>
+                            <span id="qty-${p.id}">${cart[p.id] || 0}</span>
+                            <button onclick="changeQty(${p.id}, 1)">+</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function changeQty(id, delta) {
+            if (!cart[id]) cart[id] = 0;
+            cart[id] += delta;
+            if (cart[id] < 0) cart[id] = 0;
+            if (cart[id] === 0) delete cart[id];
+            
+            document.getElementById(`qty-${id}`).innerText = cart[id] || 0;
+            updateCartBar();
+        }
+
+        function updateCartBar() {
+            let totalCount = 0;
+            let totalPrice = 0;
+
+            for (let id in cart) {
+                const product = products.find(p => p.id == id);
+                totalCount += cart[id];
+                totalPrice += cart[id] * product.price;
+            }
+
+            const cartBar = document.getElementById('cart-bar');
+            if (totalCount > 0) {
+                cartBar.style.display = 'flex';
+                document.getElementById('cart-count').innerText = `${totalCount} ta mahsulot tanlandi`;
+                document.getElementById('cart-total').innerText = `${totalPrice.toLocaleString()} so'm`;
+            } else {
+                cartBar.style.display = 'none';
+            }
+        }
+
+        function openModal() {
+            const modalItems = document.getElementById('modal-cart-items');
+            modalItems.innerHTML = '';
+            
+            for (let id in cart) {
+                const product = products.find(p => p.id == id);
+                const subtotal = cart[id] * product.price;
+                modalItems.innerHTML += `
+                    <div class="cart-item-row">
+                        <span>${product.name} x ${cart[id]} ${product.unit}</span>
+                        <strong>${subtotal.toLocaleString()} so'm</strong>
                     </div>
                 `;
-                list.appendChild(card);
-            });
-            updateTotal();
-        }
+            }
 
-        function updateKgInput(id, val) {
-            let qty = parseFloat(val);
-            if (isNaN(qty) || qty <= 0) {
-                delete cart[id];
-            } else {
-                cart[id] = qty;
-            }
-            updateTotal();
-        }
-
-        function changeQop(id, delta) {
-            if (!cart[id]) {
-                cart[id] = 0;
-            }
-            cart[id] += delta;
-            if (cart[id] < 0) {
-                cart[id] = 0;
-            }
-            if (cart[id] === 0) {
-                delete cart[id];
-            }
-            renderProducts();
-        }
-
-        function updateTotal() {
-            let total = 0;
-            for (let id in cart) {
-                let p = products.find(prod => prod.id == id);
-                if (p && cart[id] > 0) {
-                    total += p.price * cart[id];
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const user = tg.initDataUnsafe.user;
+                if (!document.getElementById('user-name-input').value) {
+                    document.getElementById('user-name-input').value = `${user.first_name || ''} ${user.last_name || ''}`.trim();
                 }
             }
-            document.getElementById('totalSum').innerText = total.toLocaleString();
+
+            document.getElementById('order-modal').style.display = 'flex';
         }
 
-        function checkPhone() {
-            let phone = document.getElementById('clientPhone').value.trim();
-            let btn = document.getElementById('submitBtn');
-            if (phone.length >= 9) {
-                btn.removeAttribute('disabled');
-            } else {
-                btn.setAttribute('disabled', 'true');
+        function closeModal() {
+            document.getElementById('order-modal').style.display = 'none';
+        }
+
+        function sendOrder() {
+            const name = document.getElementById('user-name-input').value.trim();
+            const phone = document.getElementById('phone-input').value.trim();
+
+            if (!name || name.length < 3) {
+                alert("Iltimos, Ism familiyangizni kiriting!");
+                return;
             }
-        }
-
-        function submitOrder() {
-            let phone = document.getElementById('clientPhone').value.trim();
-            if (!phone) {
-                alert("Iltimos, telefon raqamingizni kiriting!");
+            if (!phone || phone.length < 9) {
+                alert("Iltimos, telefon raqamingizni to'g'ri kiriting!");
                 return;
             }
 
@@ -296,26 +460,20 @@
             let total = 0;
 
             for (let id in cart) {
-                let p = products.find(prod => prod.id == id);
-                if (p && cart[id] > 0) {
-                    items.push({
-                        name: p.name,
-                        qty: cart[id],
-                        unit: p.unit,
-                        price: p.price
-                    });
-                    total += p.price * cart[id];
-                }
+                const product = products.find(p => p.id == id);
+                const subtotal = cart[id] * product.price;
+                total += subtotal;
+                items.push({
+                    name: product.name,
+                    qty: cart[id],
+                    unit: product.unit,
+                    price: product.price
+                });
             }
 
-            if (items.length === 0) {
-                alert("Savat bo'sh! Mahsulot tanlang.");
-                return;
-            }
-
-            let orderData = {
-                user_id: user ? user.id : 'unknown',
-                user_name: user ? (user.first_name + (user.last_name ? ' ' + user.last_name : '')) : 'Hurmatli mijoz',
+            const orderData = {
+                user_id: tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 'unknown',
+                user_name: name,
                 phone: phone,
                 items: items,
                 total: total
@@ -328,19 +486,22 @@
             })
             .then(res => res.json())
             .then(data => {
-                alert("Buyurtmangiz muvaffaqiyatli qabul qilindi! Sotuvchi 5 daqiqa ichida siz bilan bog'lanadi.");
-                cart = {};
-                document.getElementById('clientPhone').value = '';
-                checkPhone();
-                renderProducts();
-                tg.close();
+                if (data.status === 'success') {
+                    alert("Buyurtmangiz muvaffaqiyatli qabul qilindi! Tez orada siz bilan bog'lanamiz.");
+                    cart = {};
+                    updateCartBar();
+                    closeModal();
+                    tg.close();
+                } else {
+                    alert("Xatolik yuz berdi: " + (data.message || "Qayta urinib ko'ring"));
+                }
             })
             .catch(err => {
-                alert("Xatolik yuz berdi: " + err);
+                alert("Tarmoqda xatolik yuz berdi. Qayta urinib ko'ring.");
+                console.error(err);
             });
         }
 
-        // Ishga tushishi bilan mahsulotlarni chiqarish
         renderProducts();
     </script>
 </body>
