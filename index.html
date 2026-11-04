@@ -101,19 +101,27 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">To'lov turini tanlang:</label>
                         <div class="form-check p-3 border rounded-3 mb-2 bg-light">
-                            <input class="form-check-input" type="radio" name="paymentType" id="payCash" value="cash" checked>
+                            <input class="form-check-input" type="radio" name="paymentType" id="payCash" value="cash" onclick="toggleReceiptBox()" checked>
                             <label class="form-check-label fw-semibold" for="payCash">
                                 💵 Naqd pul (Yemxonada / Yetkazilganda)
                             </label>
                         </div>
                         <div class="form-check p-3 border rounded-3 bg-light">
-                            <input class="form-check-input" type="radio" name="paymentType" id="payCard" value="card">
+                            <input class="form-check-input" type="radio" name="paymentType" id="payCard" value="card" onclick="toggleReceiptBox()">
                             <label class="form-check-label fw-semibold" for="payCard">
                                 💳 Karta orqali<br>
                                 <span class="text-muted small">Karta: <code>5614 6821 0937 9760</code> (Isayev Nodirjon)</span>
                             </label>
                         </div>
                     </div>
+
+                    <!-- Karta tanlansa chiqadigan chek yuklash bo'limi -->
+                    <div class="mb-3 d-none" id="receiptBox">
+                        <label for="receiptInput" class="form-label fw-bold text-danger">📸 To'lov chekini yuklash (Majburiy):</label>
+                        <input type="file" class="form-control" id="receiptInput" accept="image/*">
+                        <div class="form-text small">Iltimos, to'lov amalga oshirilgan chek rasmini yuklang.</div>
+                    </div>
+
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Bekor qilish</button>
@@ -162,7 +170,6 @@
                 let controlHtml = '';
 
                 if (p.type === 'qop') {
-                    // Qopdagilar uchun + / - tugmalar
                     controlHtml = `
                         <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-outline-success btn-sm px-2 py-1 rounded-circle fw-bold" onclick="updateQty(${p.id}, -1)">-</button>
@@ -171,7 +178,6 @@
                         </div>
                     `;
                 } else {
-                    // KG yoki dona (qo'lda yoziladigan) lar uchun input katak
                     controlHtml = `
                         <div class="d-flex align-items-center gap-1">
                             <input type="number" min="0" class="form-control form-control-sm kg-input" id="qty-${p.id}" value="${qty}" oninput="setKgQty(${p.id}, this.value)" placeholder="0">
@@ -218,6 +224,16 @@
             updateCartBar();
         }
 
+        function toggleReceiptBox() {
+            let payCard = document.getElementById('payCard').checked;
+            let receiptBox = document.getElementById('receiptBox');
+            if (payCard) {
+                receiptBox.classList.remove('d-none');
+            } else {
+                receiptBox.classList.add('d-none');
+            }
+        }
+
         function updateCartBar() {
             let totalCount = 0;
             let totalPrice = 0;
@@ -251,6 +267,15 @@
                 return;
             }
 
+            let paymentType = document.querySelector('input[name="paymentType"]:checked').value;
+            let receiptInput = document.getElementById('receiptInput');
+
+            // Agar karta tanlangan bo'lsa, chek rasmi majburiy yuklanishi tekshiriladi
+            if (paymentType === 'card' && receiptInput.files.length === 0) {
+                alert("Iltimos, karta orqali to'lov chekining rasmini yuklang!");
+                return;
+            }
+
             let cartItems = [];
             let totalAmount = 0;
 
@@ -265,8 +290,6 @@
                 });
                 totalAmount += qty * p.price;
             }
-
-            let paymentType = document.querySelector('input[name="paymentType"]:checked').value;
 
             fetch('/api/order', {
                 method: 'POST',
@@ -283,7 +306,7 @@
             .then(res => res.json())
             .then(data => {
                 if(data.status === 'success') {
-                    alert("Buyurtmangiz muvaffaqiyatli yuborildi!");
+                    alert("Buyurtmangiz muvaffaqiyatli yuborildi! Endi chek rasmini botga ham yuborishni unutmang.");
                     tg.close();
                 } else {
                     alert("Xatolik yuz berdi. Qaytadan urinib ko'ring.");
