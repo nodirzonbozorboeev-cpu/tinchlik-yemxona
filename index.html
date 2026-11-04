@@ -3,393 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tinchlik Yemxona - Rasmiy Katalog</title>
+    <title>Tinchlik Yemxona Katalogi</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Telegram WebApp JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            --primary-color: #2e7d32;
-            --primary-dark: #1b5e20;
-            --accent-color: #ff9800;
-            --bg-color: #f4f6f8;
-            --card-bg: #ffffff;
-            --text-color: #333333;
-            --text-light: #666666;
-            --radius: 12px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
-
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             padding-bottom: 90px;
         }
-
-        header {
-            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+        .navbar {
+            background-color: #198754;
             color: white;
-            padding: 20px 16px;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 100;
         }
-
-        header h1 {
-            font-size: 20px;
-            margin-bottom: 4px;
-        }
-
-        header p {
-            font-size: 13px;
-            opacity: 0.9;
-        }
-
-        .container {
-            padding: 16px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: 700;
-            margin: 16px 0 10px 4px;
-            color: var(--primary-dark);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .products-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-        }
-
-        .product-card {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            border: 1px solid #eaeaea;
-        }
-
-        .product-info h3 {
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 4px;
-            color: var(--text-color);
-        }
-
-        .product-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 10px;
-            border-top: 1px solid #f0f0f0;
-            padding-top: 10px;
-        }
-
-        .price {
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--primary-dark);
-        }
-
-        .counter {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: #f1f8f5;
-            border-radius: 8px;
-            padding: 4px;
-        }
-
-        .counter button {
-            background: var(--primary-color);
-            color: white;
+        .card {
             border: none;
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
-            font-size: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .card:active {
+            transform: scale(0.98);
+        }
+        .product-price {
+            color: #198754;
             font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
+            font-size: 1.1rem;
         }
-
-        .counter button:active {
-            background: var(--primary-dark);
-        }
-
-        .counter span {
-            font-size: 14px;
-            font-weight: 600;
-            min-width: 20px;
-            text-align: center;
-        }
-
-        /* Savatcha paneli */
         .cart-bar {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
             background: white;
-            padding: 14px 16px;
-            box-shadow: 0 -4px 16px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            padding: 15px;
+            z-index: 1000;
             border-top-left-radius: 16px;
             border-top-right-radius: 16px;
-            z-index: 1000;
-        }
-
-        .cart-info {
-            font-size: 13px;
-            color: var(--text-light);
-        }
-
-        .cart-total {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-color);
-        }
-
-        .checkout-btn {
-            background: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(255, 152, 0, 0.3);
-            transition: transform 0.1s;
-        }
-
-        .checkout-btn:active {
-            transform: scale(0.96);
-        }
-
-        /* Modal oyna */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 2000;
-            justify-content: center;
-            align-items: flex-end;
-        }
-
-        .modal-content {
-            background: white;
-            width: 100%;
-            max-width: 600px;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            padding: 20px;
-            max-height: 85vh;
-            overflow-y: auto;
-            animation: slideUp 0.3s ease-out;
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .modal-header h2 {
-            font-size: 18px;
-            color: var(--primary-dark);
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--text-light);
-        }
-
-        .cart-items-list {
-            margin-bottom: 16px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .cart-item-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .form-group {
-            margin-bottom: 14px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: var(--text-light);
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .form-group input:focus {
-            border-color: var(--primary-color);
-        }
-
-        .submit-order-btn {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            width: 100%;
-            padding: 14px;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>🌾 Tinchlik Yemxona</h1>
-        <p>Sifatli yem-hasak va ozuqalar kafolati</p>
-    </header>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark px-3 py-3 shadow-sm">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <span class="navbar-brand mb-0 h1 fw-bold">🌾 Tinchlik Yemxona</span>
+            <span class="badge bg-light text-success fs-6 px-3 py-2" id="cartCountBadge">Savatcha: 0 ta</span>
+        </div>
+    </nav>
 
-    <div class="container">
-        <div class="section-title">📦 Barcha mahsulotlar va narxlar</div>
-        <div class="products-grid" id="products-container">
-            <!-- JavaScript orqali mahsulotlar chiqariladi -->
+    <!-- Mahsulotlar ro'yxati -->
+    <div class="container mt-3">
+        <h5 class="mb-3 text-secondary fw-semibold">Barcha mahsulotlar:</h5>
+        <div class="row g-3" id="productList">
+            <!-- JavaScript orqali to'ldiriladi -->
         </div>
     </div>
 
     <!-- Pastki savatcha paneli -->
-    <div class="cart-bar" id="cart-bar" style="display: none;">
-        <div>
-            <div class="cart-info" id="cart-count">0 ta mahsulot</div>
-            <div class="cart-total" id="cart-total">0 so'm</div>
+    <div class="cart-bar d-none" id="cartBar">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                <span class="text-muted d-block small">Jami summa:</span>
+                <span class="fs-5 fw-bold text-dark" id="cartTotalText">0 so'm</span>
+            </div>
+            <button class="btn btn-success px-4 py-2 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#checkoutModal">
+                🛒 Buyurtma berish
+            </button>
         </div>
-        <button class="checkout-btn" onclick="openModal()">Buyurtma berish 🛒</button>
     </div>
 
-    <!-- Buyurtmani rasmiylashtirish oynasi -->
-    <div class="modal" id="order-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Buyurtmani tasdiqlash</h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
+    <!-- Buyurtmani rasmiylashtirish oynasi (Modal) -->
+    <div class="modal fade" id="checkoutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold">📋 Buyurtmani rasmiylashtirish</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="cartItemsSummary" class="mb-3 border-bottom pb-2 small text-muted">
+                        <!-- Tanlangan mahsulotlar ro'yxati -->
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="phoneInput" class="form-label fw-bold">Telefon raqamingiz:</label>
+                        <input type="tel" class="form-control" id="phoneInput" placeholder="+998 90 123 45 67" required>
+                    </div>
+
+                    <!-- To'lov turi -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">To'lov turini tanlang:</label>
+                        <div class="form-check p-3 border rounded-3 mb-2 bg-light">
+                            <input class="form-check-input" type="radio" name="paymentType" id="payCash" value="cash" checked>
+                            <label class="form-check-label fw-semibold" for="payCash">
+                                💵 Naqd pul (Yemxonada / Yetkazilganda)
+                            </label>
+                        </div>
+                        <div class="form-check p-3 border rounded-3 bg-light">
+                            <input class="form-check-input" type="radio" name="paymentType" id="payCard" value="card">
+                            <label class="form-check-label fw-semibold" for="payCard">
+                                💳 Karta orqali<br>
+                                <span class="text-muted small">Karta: <code>5614 6821 0937 9760</code> (Isayev Nodirjon)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Bekor qilish</button>
+                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold" onclick="sendOrder()">Tasdiqlash va yuborish</button>
+                </div>
             </div>
-            <div class="cart-items-list" id="modal-cart-items"></div>
-            
-            <div class="form-group">
-                <label>Ism familiyangiz:</label>
-                <input type="text" id="user-name-input" placeholder="Masalan: Anvar Toshmatov">
-            </div>
-            <div class="form-group">
-                <label>Telefon raqamingiz:</label>
-                <input type="tel" id="phone-input" value="+998 " placeholder="+998 90 123 45 67">
-            </div>
-            <button class="submit-order-btn" onclick="sendOrder()">Buyurtmani yuborish 🚀</button>
         </div>
     </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Siz yuborgan aniq mahsulotlar ro'yxati va narxlari
+        // Foydalanuvchi yuborgan to'liq mahsulotlar ro'yxati
         const products = [
-            { id: 1, name: "Kepak Motabar", price: 85000, unit: "qop (25kg)" },
-            { id: 2, name: "Kepak Mayda", price: 85000, unit: "qop (25kg)" },
-            { id: 3, name: "MasterFeed (Buqalar uchun)", price: 200000, unit: "qop (40kg)" },
-            { id: 4, name: "MasterFeed (Qoylar uchun)", price: 200000, unit: "qop (40kg)" },
-            { id: 5, name: "MasterFeed (Sigirlar uchun)", price: 225000, unit: "qop (40kg)" },
-            { id: 6, name: "MasterFeed (Quyonlar uchun)", price: 6000, unit: "kg" },
-            { id: 7, name: "MasterFeed (Bruler 1,2,3)", price: 10000, unit: "kg" },
-            { id: 8, name: "ArganicFeed (Buqa va Sigirlar uchun)", price: 175000, unit: "qop (40kg)" },
-            { id: 9, name: "Xusnidin Chorvador (Buqalar uchun)", price: 240000, unit: "qop (40kg)" },
-            { id: 10, name: "Silyos", price: 18000, unit: "qop (20kg)" },
-            { id: 11, name: "Kunjara", price: 6500, unit: "kg" },
-            { id: 12, name: "Raps Shrot", price: 6000, unit: "kg" },
-            { id: 13, name: "Mayda Tuz", price: 2000, unit: "pachka (1kg)" },
-            { id: 14, name: "Vitamin tuz", price: 12000, unit: "dona" },
-            { id: 15, name: "Makka Johori", price: 4000, unit: "kg" },
-            { id: 16, name: "Arpa", price: 4000, unit: "kg" },
-            { id: 17, name: "Bug'doy", price: 4500, unit: "kg" },
-            { id: 18, name: "555 Omuxta yem (Qoylar uchun)", price: 5000, unit: "kg" },
-            { id: 19, name: "555 Omuxta yem (Tovuqlar uchun)", price: 5000, unit: "kg" }
+            { id: 1, name: "Kepak Motabar", unit: "qop (25kg)", price: 85000 },
+            { id: 2, name: "Kepak Mayda", unit: "qop (25kg)", price: 85000 },
+            { id: 3, name: "MasterFeed (Buqalar uchun)", unit: "qop (40kg)", price: 200000 },
+            { id: 4, name: "MasterFeed (Qoylar uchun)", unit: "qop (40kg)", price: 200000 },
+            { id: 5, name: "MasterFeed (Sigirlar uchun)", unit: "qop (40kg)", price: 225000 },
+            { id: 6, name: "MasterFeed (Quyonlar uchun)", unit: "kg", price: 6000 },
+            { id: 7, name: "MasterFeed (Bruler 1,2,3)", unit: "kg", price: 10000 },
+            { id: 8, name: "ArganicFeed (Buqa va Sigirlar uchun)", unit: "qop (40kg)", price: 175000 },
+            { id: 9, name: "Xusnidin Chorvador (Buqalar uchun)", unit: "qop (40kg)", price: 240000 },
+            { id: 10, name: "Silyos", unit: "qop (20kg)", price: 18000 },
+            { id: 11, name: "Kunjara", unit: "kg", price: 6500 },
+            { id: 12, name: "Raps Shrot", unit: "kg", price: 6000 },
+            { id: 13, name: "Mayda Tuz", unit: "pachka (1kg)", price: 2000 },
+            { id: 14, name: "Vitamin tuz", unit: "dona", price: 12000 },
+            { id: 15, name: "Makka Johori", unit: "kg", price: 4000 },
+            { id: 16, name: "Arpa", unit: "kg", price: 4000 },
+            { id: 17, name: "Bug'doy", unit: "kg", price: 4500 },
+            { id: 18, name: "555 Omuxta yem (Qoylar uchun)", unit: "kg", price: 5000 },
+            { id: 19, name: "555 Omuxta yem (Tovuqlar uchun)", unit: "kg", price: 5000 }
         ];
 
         let cart = {};
 
         function renderProducts() {
-            const container = document.getElementById('products-container');
-            container.innerHTML = products.map(p => `
-                <div class="product-card">
-                    <div class="product-info">
-                        <h3>${p.name}</h3>
-                    </div>
-                    <div class="product-footer">
-                        <div class="price">${p.price.toLocaleString()} so'm / ${p.unit}</div>
-                        <div class="counter">
-                            <button onclick="changeQty(${p.id}, -1)">-</button>
-                            <span id="qty-${p.id}">${cart[p.id] || 0}</span>
-                            <button onclick="changeQty(${p.id}, 1)">+</button>
+            const listEl = document.getElementById('productList');
+            listEl.innerHTML = '';
+            products.forEach(p => {
+                let qty = cart[p.id] || 0;
+                listEl.innerHTML += `
+                    <div class="col-12">
+                        <div class="card p-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1 fw-bold text-dark">${p.name}</h6>
+                                    <span class="text-muted small">O'lchovi: ${p.unit}</span>
+                                    <div class="product-price mt-1">${p.price.toLocaleString()} so'm</div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-outline-success btn-sm px-2 py-1 rounded-circle fw-bold" onclick="updateQty(${p.id}, -1)">-</button>
+                                    <span class="fw-bold px-1" id="qty-${p.id}">${qty}</span>
+                                    <button class="btn btn-success btn-sm px-2 py-1 rounded-circle fw-bold" onclick="updateQty(${p.id}, 1)">+</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            });
         }
 
-        function changeQty(id, delta) {
+        function updateQty(id, change) {
             if (!cart[id]) cart[id] = 0;
-            cart[id] += delta;
+            cart[id] += change;
             if (cart[id] < 0) cart[id] = 0;
             if (cart[id] === 0) delete cart[id];
-            
+
             document.getElementById(`qty-${id}`).innerText = cart[id] || 0;
             updateCartBar();
         }
@@ -397,108 +192,77 @@
         function updateCartBar() {
             let totalCount = 0;
             let totalPrice = 0;
+            let summaryHtml = '';
 
             for (let id in cart) {
-                const product = products.find(p => p.id == id);
-                totalCount += cart[id];
-                totalPrice += cart[id] * product.price;
+                let p = products.find(prod => prod.id == id);
+                let count = cart[id];
+                totalCount += count;
+                let sum = count * p.price;
+                totalPrice += sum;
+                summaryHtml += `<div class="d-flex justify-content-between"><span>${p.name} (${count} ${p.unit})</span> <strong>${sum.toLocaleString()} so'm</strong></div>`;
             }
 
-            const cartBar = document.getElementById('cart-bar');
+            const cartBar = document.getElementById('cartBar');
             if (totalCount > 0) {
-                cartBar.style.display = 'flex';
-                document.getElementById('cart-count').innerText = `${totalCount} ta mahsulot tanlandi`;
-                document.getElementById('cart-total').innerText = `${totalPrice.toLocaleString()} so'm`;
+                cartBar.classList.remove('d-none');
+                document.getElementById('cartCountBadge').innerText = `Savatcha: ${totalCount} ta`;
+                document.getElementById('cartTotalText').innerText = `${totalPrice.toLocaleString()} so'm`;
+                document.getElementById('cartItemsSummary').innerHTML = summaryHtml || 'Savatcha bo\'sh';
             } else {
-                cartBar.style.display = 'none';
+                cartBar.classList.add('d-none');
+                document.getElementById('cartCountBadge').innerText = `Savatcha: 0 ta`;
             }
-        }
-
-        function openModal() {
-            const modalItems = document.getElementById('modal-cart-items');
-            modalItems.innerHTML = '';
-            
-            for (let id in cart) {
-                const product = products.find(p => p.id == id);
-                const subtotal = cart[id] * product.price;
-                modalItems.innerHTML += `
-                    <div class="cart-item-row">
-                        <span>${product.name} x ${cart[id]} ${product.unit}</span>
-                        <strong>${subtotal.toLocaleString()} so'm</strong>
-                    </div>
-                `;
-            }
-
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                const user = tg.initDataUnsafe.user;
-                if (!document.getElementById('user-name-input').value) {
-                    document.getElementById('user-name-input').value = `${user.first_name || ''} ${user.last_name || ''}`.trim();
-                }
-            }
-
-            document.getElementById('order-modal').style.display = 'flex';
-        }
-
-        function closeModal() {
-            document.getElementById('order-modal').style.display = 'none';
         }
 
         function sendOrder() {
-            const name = document.getElementById('user-name-input').value.trim();
-            const phone = document.getElementById('phone-input').value.trim();
-
-            if (!name || name.length < 3) {
-                alert("Iltimos, Ism familiyangizni kiriting!");
-                return;
-            }
-            if (!phone || phone.length < 9) {
-                alert("Iltimos, telefon raqamingizni to'g'ri kiriting!");
+            let phone = document.getElementById('phoneInput').value.trim();
+            if (!phone) {
+                alert("Iltimos, telefon raqamingizni kiriting!");
                 return;
             }
 
-            let items = [];
-            let total = 0;
+            let cartItems = [];
+            let totalAmount = 0;
 
             for (let id in cart) {
-                const product = products.find(p => p.id == id);
-                const subtotal = cart[id] * product.price;
-                total += subtotal;
-                items.push({
-                    name: product.name,
-                    qty: cart[id],
-                    unit: product.unit,
-                    price: product.price
+                let p = products.find(prod => prod.id == id);
+                let qty = cart[id];
+                cartItems.push({
+                    name: p.name,
+                    qty: qty,
+                    unit: p.unit,
+                    price: p.price
                 });
+                totalAmount += qty * p.price;
             }
 
-            const orderData = {
-                user_id: tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 'unknown',
-                user_name: name,
-                phone: phone,
-                items: items,
-                total: total
-            };
+            let paymentType = document.querySelector('input[name="paymentType"]:checked').value;
 
             fetch('/api/order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(orderData)
+                body: JSON.stringify({
+                    user_id: tg.initDataUnsafe?.user?.id || 'unknown',
+                    user_name: tg.initDataUnsafe?.user?.first_name || 'Mijoz',
+                    phone: phone,
+                    items: cartItems,
+                    total: totalAmount,
+                    payment_type: paymentType
+                })
             })
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'success') {
-                    alert("Buyurtmangiz muvaffaqiyatli qabul qilindi! Tez orada siz bilan bog'lanamiz.");
-                    cart = {};
-                    updateCartBar();
-                    closeModal();
+                if(data.status === 'success') {
+                    alert("Buyurtmangiz muvaffaqiyatli yuborildi!");
                     tg.close();
                 } else {
-                    alert("Xatolik yuz berdi: " + (data.message || "Qayta urinib ko'ring"));
+                    alert("Xatolik yuz berdi. Qaytadan urinib ko'ring.");
                 }
             })
             .catch(err => {
-                alert("Tarmoqda xatolik yuz berdi. Qayta urinib ko'ring.");
                 console.error(err);
+                alert("Server bilan aloqada xatolik!");
             });
         }
 

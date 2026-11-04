@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from aiogram import Bot, Dispatcher, Router
+from aiogram import Bot, Dispatcher, Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
@@ -34,6 +34,22 @@ async def cmd_start(message: Message):
         parse_mode="Markdown"
     )
 
+# Mijoz chek rasmini yuborganda ishlaydigan qism
+@router.message(F.photo)
+async def handle_photo(message: Message):
+    if message.from_user.id == ADMIN_ID:
+        return # Admin o'zi rasm yuborsa e'tibor bermaslik
+    
+    # Chekni adminga yo'naltirish
+    await bot.send_message(
+        chat_id=ADMIN_ID,
+        text=f"📥 **Yangi to'lov cheki keldi!**\n👤 Mijoz: {message.from_user.full_name} (ID: `{message.from_user.id}`)\nUsername: @{message.from_user.username or 'yoq'}",
+        parse_mode="Markdown"
+    )
+    await message.forward(chat_id=ADMIN_ID)
+    await message.answer("✅ To'lov chekingiz adminga yuborildi! Tez orada tekshirib tasdiqlashadi.")
+
+# Serverdan buyurtmani qabul qilish
 async def handle_index(request):
     return web.FileResponse('index.html')
 
@@ -45,15 +61,28 @@ async def handle_order(request):
         phone = data.get('phone')
         items = data.get('items', [])
         total = data.get('total', 0)
+        payment_type = data.get('payment_type', 'cash')
 
         items_text = "\n".join([f"• {item['name']} - {item['qty']} {item['unit']} ({item['price']:,} so'mdan)" for item in items])
         
+        # Mijozga yuboriladigan xabar
+        if payment_type == 'card':
+            payment_text = (
+                f"💳 **To'lov turi:** Karta orqali\n"
+                f"📌 **Karta raqam:** `5614 6821 0937 9760` (Isayev Nodirjon)\n"
+                f"💰 **To'lanishi kerak:** {total:,} so'm\n\n"
+                f"⏳ *Iltimos, yuqoridagi kartaga to'lovni amalga oshiring va chek rasmini shu botga yuboring!*"
+            )
+        else:
+            payment_text = "💵 **To'lov turi:** Naqd pul (Yetkazib berilganda / Yemxonada)"
+
         client_message = (
             f"✅ **Buyurtmangiz muvaffaqiyatli qabul qilindi!**\n\n"
             f"📦 **Sizning xaridlaringiz:**\n{items_text}\n\n"
             f"💰 **Jami summa:** {total:,} so'm\n"
+            f"{payment_text}\n\n"
             f"📞 **Telefon raqamingiz:** {phone}\n\n"
-            f"⏳ *Tez orada mutaxassisimiz yoki sotuvchi 5 daqiqa ichida siz bilan bog'lanadi.* Xaridingiz uchun rahmat! 😊"
+            f"⏳ *Tez orada mutaxassisimiz yoki sotuvchi siz bilan bog'lanadi.* Xaridingiz uchun rahmat! 😊"
         )
         
         if user_id and user_id != 'unknown':
@@ -62,10 +91,13 @@ async def handle_order(request):
             except Exception as e:
                 logging.error(f"Mijozga xabar yuborishda xatolik: {e}")
 
+        # Adminga yuboriladigan xabar
+        admin_payment_label = "💳 Karta orqali (Chek kutilmoqda)" if payment_type == 'card' else "💵 Naqd pul"
         admin_message = (
             f"🔔 **YANGI BUYURTMA KELDI!** 🚀\n\n"
-            f"👤 **Mijoz:** {user_name} (ID: {user_id})\n"
-            f"📞 **Telefon:** {phone}\n\n"
+            f"👤 **Mijoz:** {user_name} (ID: `{user_id}`)\n"
+            f"📞 **Telefon:** {phone}\n"
+            f"💳 **To'lov turi:** {admin_payment_label}\n\n"
             f"📋 **Mahsulotlar:**\n{items_text}\n\n"
             f"💵 **Jami summa:** {total:,} so'm"
         )
@@ -83,7 +115,7 @@ async def web_server():
     app.router.add_static('/', path='.', name='static')
     
     runner = web.AppRunner(app)
-    await runner.setup()
+    app_runner = await runner.setup()
     port = int(os.environ.get("PORT", 10000))
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
