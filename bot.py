@@ -1,218 +1,115 @@
-import logging
 import asyncio
-import os
-from aiohttp import web
-from aiogram import Bot, Dispatcher, Router, F
-from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
+import logging
+import sys
+from aiogram import Bot, Dispatcher, F, Router
+from aiogram.filters import Command, CommandStart
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    Message,
+    ReplyKeyboardMarkup,
+    WebAppInfo,
+)
 
+# Sizning haqiqiy tokeningiz va Web App havolangiz
 TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE"
-ADMIN_ID = 8630108906
+WEB_APP_URL = "https://tinchlik-yemxona.onrender.com"
 
-bot = Bot(token=TOKEN)
-dp = Dispatcher()
 router = Router()
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-WEBAPP_URL = "https://tinchlik-yemxona.onrender.com"
+# ----------------- ASOSIY MENYU (KEYBOARD) -----------------
+def get_main_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🛒 Tinchlik Yemxona Katalogi")],
+            [KeyboardButton(text="🎁 VIP Xaridor shartlari"), KeyboardButton(text="💬 Fermerlar maslahatxonasi")],
+            [KeyboardButton(text="📍 Do'kon manzili va Ish vaqti"), KeyboardButton(text="📞 Biz bilan aloqa")]
+        ],
+        resize_keyboard=True
+    )
 
-# 1. Start komandasi (Kalkulyator va Katalog tugmalari bilan)
-@router.message(Command("start"))
+# ----------------- START BUYrug'I -----------------
+@router.message(CommandStart())
 async def cmd_start(message: Message):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🐂 Aqlli Ratsion Kalkulyatori (3 Mahal)", callback_data="open_calc")],
-        [InlineKeyboardButton(text="🛒 Tinchlik Yemxona Katalogi", web_app=WebAppInfo(url=WEBAPP_URL))]
-    ])
+    welcome_text = (
+        f"Assalomu alaykum, <b>{message.from_user.full_name}</b>!\n\n"
+        "🌾 <b>'Tinchlik Yemxona'</b> rasmiy botiga xush kelibsiz.\n"
+        "Sifatli yem, silyos va kunjara mahsulotlarini eng qulay narxlarda xarid qiling!"
+    )
+    await message.answer(welcome_text, parse_mode="HTML", reply_markup=get_main_menu())
+
+# ----------------- 1. KATALOG (WEB-APP) -----------------
+@router.message(F.text == "🛒 Tinchlik Yemxona Katalogi")
+async def open_catalog(message: Message):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🛍️ Katalog ochish", web_app=WebAppInfo(url=WEB_APP_URL))]
+        ]
+    )
     await message.answer(
-        "<b>Assalomu alaykum, hurmatli mijozimiz! 😊</b>\n\n"
-        "\"Tinchlik Yemxona\" rasmiy botiga xush kelibsiz.\n\n"
-        "Moldingiz uchun 100% natija beradigan 3 mahal kundalik ratsionni hisoblash yoki mahsulotlarni tanlash uchun quyidagi tugmani bosing:",
-        reply_markup=keyboard,
-        parse_mode="HTML"
+        "Katalogimizni ochish uchun pastdagi tugmani bosing va kerakli mahsulotlarni tanlang:",
+        reply_markup=keyboard
     )
 
-# 2. Asosiy menyu (Hayvon turini tanlash)
-@router.callback_query(F.data == "open_calc")
-async def open_calculator(callback: CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🐂 Buqani Semirtirish (Go'sht)", callback_data="calc_buqa")],
-        [InlineKeyboardButton(text="🐄 Sigirning Sutini Oshirish", callback_data="calc_sigir")],
-        [InlineKeyboardButton(text="🐑 Qo'y va Sovliqlarni Boqish", callback_data="calc_qoy")],
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_to_start")]
-    ])
-    await callback.message.edit_text(
-        "<b>🐂 \"Tinchlik Yemxona\" Ratsion Kalkulyatori</b>\n\n"
-        "Qaysi turdagi jonivor uchun ratsion hisoblamoqchisiz?",
-        reply_markup=keyboard,
-        parse_mode="HTML"
+# ----------------- 2. VIP XARIDOR DASTURI -----------------
+@router.message(F.text == "🎁 VIP Xaridor shartlari")
+async def vip_conditions(message: Message):
+    vip_text = (
+        "⭐ <b>'Tinchlik Yemxona' VIP Xaridor Dasturi</b>\n\n"
+        "Haftasiga <b>1,5 million so'mdan</b> ortiq tovar xarid qiling va avtomatik ravishda <b>VIP Xaridor</b> maqomini qo'lga kiriting!\n\n"
+        "<b>VIP mijozlarga beriladigan imtiyozlar:</b>\n"
+        "• 🏷️ Keyingi xaridlar uchun maxsus chegirmalar;\n"
+        "• ⚡ Do'konda navbatsiz va birinchi navbatda yuklab berish;\n"
+        "• 📢 Yangi kelgan sifatli silyos va yemlarni birinchi bo'lib band qilish imkoniyati;\n"
+        "• 🚚 Yetkazib berishda maxsus qulayliklar va bonuslar.\n\n"
+        "<i>Savollar bo'yicha operatorga murojaat qiling!</i>"
     )
-    await callback.answer()
+    await message.answer(vip_text, parse_mode="HTML")
 
-@router.callback_query(F.data == "back_to_start")
-async def back_to_start(callback: CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🐂 Aqlli Ratsion Kalkulyatori (3 Mahal)", callback_data="open_calc")],
-        [InlineKeyboardButton(text="🛒 Tinchlik Yemxona Katalogi", web_app=WebAppInfo(url=WEBAPP_URL))]
-    ])
-    await callback.message.edit_text(
-        "<b>Assalomu alaykum, hurmatli mijozimiz! 😊</b>\n\n"
-        "\"Tinchlik Yemxona\" rasmiy botiga xush kelibsiz.\n\n"
-        "Moldingiz uchun 100% natija beradigan 3 mahal kundalik ratsionni hisoblash uchun quyidagi tugmani bosing:",
-        reply_markup=keyboard,
-        parse_mode="HTML"
+# ----------------- 3. FERMERLAR MASLAHATXONASI -----------------
+@router.message(F.text == "💬 Fermerlar maslahatxonasi")
+async def farmers_advice(message: Message):
+    advice_text = (
+        "💬 <b>Fermerlar va Chorvadorlar Maslahatxonasi</b>\n\n"
+        "Mol parvarish qilish, yem tanlash, silyos saqlash yoki ozuqa ratsioni bo'yicha savollaringiz bormi?\n\n"
+        "✍️ O'z savolingizni shu yerga yozib qoldiring, mutaxassisimiz tez fursatda sizga javob beradi va to'g'ri maslahat beradi!"
     )
-    await callback.answer()
+    await message.answer(advice_text, parse_mode="HTML")
 
-# --- BUQA UCHUN VAZN TANLASH ---
-@router.callback_query(F.data == "calc_buqa")
-async def buqa_weights(callback: CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⚖️ 300 - 350 kg", callback_data="buqa_350")],
-        [InlineKeyboardButton(text="⚖️ 400 - 450 kg", callback_data="buqa_450")],
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="open_calc")]
-    ])
-    await callback.message.edit_text("<b>🐂 Buqaning vaznini tanlang:</b>", reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
-
-# --- SIGIR UCHUN VAZN TANLASH ---
-@router.callback_query(F.data == "calc_sigir")
-async def sigir_weights(callback: CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⚖️ 350 - 400 kg", callback_data="sigir_400")],
-        [InlineKeyboardButton(text="⚖️ 450 - 500 kg", callback_data="sigir_500")],
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="open_calc")]
-    ])
-    await callback.message.edit_text("<b>🐄 Sigirning vaznini tanlang:</b>", reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
-
-# --- QO'Y UCHUN VAZN TANLASH ---
-@router.callback_query(F.data == "calc_qoy")
-async def qoy_weights(callback: CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⚖️ 40 - 50 kg", callback_data="qoy_50")],
-        [InlineKeyboardButton(text="⚖️ 60 - 70 kg", callback_data="qoy_70")],
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="open_calc")]
-    ])
-    await callback.message.edit_text("<b>🐑 Qo'yning vaznini tanlang:</b>", reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
-
-
-# ==========================================
-# NATIJALAR (3 MAHALGA BO'LINGAN RATSIONLAR)
-# ==========================================
-
-@router.callback_query(F.data == "buqa_450")
-async def res_buqa_450(callback: CallbackQuery):
-    text = (
-        "<b>🐂 400–450 kg Buqa Uchun Semirtirish Ratsioni (3 Mahal)</b>\n"
-        "<i>(MasterFeed va do'konimiz mahsulotlari asosida tuzildi)</i>\n\n"
-        "🌅 <b>1-mahal (Ertalab):</b> Silyos 8kg | MasterFeed 2kg | Kepak 1.5kg | Arpa 1kg | Tuz 20g\n"
-        "☀️ <b>2-mahal (Tushlik):</b> Silyos 5kg | Kunjara 1kg | Kepak 0.5kg\n"
-        "🌙 <b>3-mahal (Kechqurun):</b> Silyos 7kg | MasterFeed 1.5kg | Arpa 1kg | Kunjara 0.5kg"
+# ----------------- 4. DO'KON MANZILI VA ISH VAQTI -----------------
+@router.message(F.text == "📍 Do'kon manzili va Ish vaqti")
+async def shop_location(message: Message):
+    address_text = (
+        "📍 <b>'Tinchlik Yemxona' manzili va ma'lumotlari:</b>\n\n"
+        "🏠 <b>Manzil:</b> Changtepa MFY\n"
+        "⏰ <b>Ish vaqti:</b> Har kuni 08:00 dan 19:00 gacha (Dam olish kunisiz)\n"
+        "📞 <b>Telefon raqam:</b> +998 (XX) XXX-XX-XX\n\n"
+        "<i>Do'konimiz joylashgan aniq lokatsiya:</i>"
     )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛒 Katalogdan sotib olish", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="calc_buqa")]
-    ])
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
+    await message.answer(address_text, parse_mode="HTML")
+    # Siz yuborgan lokatsiya koordinatalari
+    await message.answer_location(latitude=41.1333, longitude=69.2667)
 
-@router.callback_query(F.data == "buqa_350")
-async def res_buqa_350(callback: CallbackQuery):
-    text = (
-        "<b>🐂 300–350 kg Buqa Uchun Semirtirish Ratsioni (3 Mahal)</b>\n\n"
-        "🌅 <b>1-mahal:</b> Silyos 6kg | MasterFeed 1.5kg | Kepak 1kg | Arpa 0.8kg | Tuz 15g\n"
-        "☀️ <b>2-mahal:</b> Silyos 4kg | Kunjara 0.7kg | Kepak 0.3kg\n"
-        "🌙 <b>3-mahal:</b> Silyos 5kg | MasterFeed 1kg | Arpa 0.7kg | Kunjara 0.3kg"
+# ----------------- 5. BIZ BILAN ALOQA -----------------
+@router.message(F.text == "📞 Biz bilan aloqa")
+async def contact_us(message: Message):
+    contact_text = (
+        "📞 <b>Tezkor aloqa:</b>\n\n"
+        "Operatorimizga to'g'ridan-to'g'ri bog'lanish uchun quyidagi profilga yozing:\n\n"
+        "👤 Menedjer: @tinchlik_admin"
     )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛒 Katalogdan sotib olish", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="calc_buqa")]
-    ])
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
+    await message.answer(contact_text, parse_mode="HTML")
 
-@router.callback_query(F.data == "sigir_500")
-async def res_sigir_500(callback: CallbackQuery):
-    text = (
-        "<b>🐄 450–500 kg Sigir Uchun Sut Oshirish Ratsioni (3 Mahal)</b>\n\n"
-        "🌅 <b>1-mahal:</b> Silyos 8kg | MasterFeed 2.5kg | Kepak 1.5kg | Arpa 1kg | Tuz 20g\n"
-        "☀️ <b>2-mahal:</b> Silyos 5kg | Kunjara 0.5kg | Raps Shrot 0.3kg\n"
-        "🌙 <b>3-mahal:</b> Silyos 7kg | MasterFeed 2kg | Kepak 1kg | Vitamin tuz 10g"
-    )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛒 Katalogdan sotib olish", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="calc_sigir")]
-    ])
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
-
-@router.callback_query(F.data == "sigir_400")
-async def res_sigir_400(callback: CallbackQuery):
-    text = (
-        "<b>🐄 350–400 kg Sigir Uchun Sut Oshirish Ratsioni (3 Mahal)</b>\n\n"
-        "🌅 <b>1-mahal:</b> Silyos 7kg | MasterFeed 2kg | Kepak 1kg | Arpa 0.8kg | Tuz 15g\n"
-        "☀️ <b>2-mahal:</b> Silyos 4kg | Kunjara 0.4kg\n"
-        "🌙 <b>3-mahal:</b> Silyos 6kg | MasterFeed 1.5kg | Kepak 0.8kg | Raps Shrot 0.3kg"
-    )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛒 Katalogdan sotib olish", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="calc_sigir")]
-    ])
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
-
-@router.callback_query(F.data == "qoy_70")
-async def res_qoy_70(callback: CallbackQuery):
-    text = (
-        "<b>🐑 60–70 kg Qo'y / Sovliq Uchun Ratsion (3 Mahal)</b>\n\n"
-        "🌅 <b>1-mahal:</b> Silyos 1.8kg | MasterFeed 0.5kg | Kepak 0.3kg | Tuz 5g\n"
-        "☀️ <b>2-mahal:</b> Silyos 1.2kg | Arpa 0.3kg | Kunjara 0.2kg\n"
-        "🌙 <b>3-mahal:</b> Silyos 1.5kg | MasterFeed 0.4kg | Kepak 0.3kg"
-    )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛒 Katalogdan sotib olish", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="calc_qoy")]
-    ])
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
-
-@router.callback_query(F.data == "qoy_50")
-async def res_qoy_50(callback: CallbackQuery):
-    text = (
-        "<b>🐑 40–50 kg Qo'y / Sovliq Uchun Ratsion (3 Mahal)</b>\n\n"
-        "🌅 <b>1-mahal:</b> Silyos 1.3kg | MasterFeed 0.4kg | Kepak 0.2kg | Tuz 3g\n"
-        "☀️ <b>2-mahal:</b> Silyos 0.8kg | Arpa 0.2kg | Kunjara 0.15kg\n"
-        "🌙 <b>3-mahal:</b> Silyos 1.1kg | MasterFeed 0.3kg | Kepak 0.2kg"
-    )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛒 Katalogdan sotib olish", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="calc_qoy")]
-    ])
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
-
-# Render port talabini qondirish uchun oddiy veb-server
-async def handle(request):
-    return web.Response(text="Tinchlik Yemxona Bot is active!")
-
-async def web_server():
-    app = web.Application()
-    app.router.add_get("/", handle)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-
+# ----------------- ASOSIY FUNKSIYA (MAIN) -----------------
 async def main():
+    bot = Bot(token=TOKEN)
+    dp = Dispatcher()
     dp.include_router(router)
-    await bot.delete_webhook(drop_pending_updates=True)
     
-    # Veb-server va botni bir vaqtning o'zida ishga tushirish
-    await web_server()
-    print("Bot va veb-server ishga tushdi...")
+    print("Bot muvaffaqiyatli ishga tushdi...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
