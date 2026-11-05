@@ -1,129 +1,119 @@
-import asyncio
-import logging
-import os
-from aiogram import Bot, Dispatcher, Router, F
+from aiogram import Router, F
 from aiogram.filters import Command
-from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
-from aiohttp import web
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
-# Token va Admin ID
-TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE" 
-ADMIN_ID = 8630108906
+ration_router = Router()
 
-bot = Bot(token=TOKEN)
-dp = Dispatcher()
-router = Router()
-
-@router.message(Command("start"))
+# 1. Start komandasi - Majburiy obunasiz, to'g'ridan-to'g'ri ishlaydi
+@ration_router.message(Command("start"))
 async def cmd_start(message: Message):
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🛒 Tinchlik Yemxona Katalogi", 
-                    web_app=WebAppInfo(url="https://tinchlik-yemxona.onrender.com")
-                )
-            ]
-        ]
-    )
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🐂 Aqlli Ratsion Kalkulyatori", callback_data="open_calc")]
+    ])
     await message.answer(
-        f"Assalomu alaykum, hurmatli mijozimiz! 😊\n"
-        f"🌾 **Tinchlik Yemxona** rasmiy buyurtma botiga xush kelibsiz.\n\n"
-        f"Bugun mol-holingiz uchun qanday yem-hasak kerak? Pastdagi tugmani bosing va o'zingizga kerakli mahsulotlarni tanlang!",
+        "<b>Assalomu alaykum! \"Tinchlik Yemxona\" rasmiy botiga xush kelibsiz.</b>\n\n"
+        "Moldingiz uchun 100% natija beradigan kunlik ratsionni hisoblash uchun quyidagi tugmani bosing:",
         reply_markup=keyboard,
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
-# Mijoz chek rasmini yuborganda ishlaydigan qism
-@router.message(F.photo)
-async def handle_photo(message: Message):
-    if message.from_user.id == ADMIN_ID:
-        return
-    
-    await bot.send_message(
-        chat_id=ADMIN_ID,
-        text=f"📥 **Yangi to'lov cheki keldi!**\n👤 Mijoz: {message.from_user.full_name} (ID: `{message.from_user.id}`)\nUsername: @{message.from_user.username or 'yoq'}",
-        parse_mode="Markdown"
+# 2. Kalkulyator menyusini ochish
+@ration_router.callback_query(F.data == "open_calc")
+async def open_calculator(callback: CallbackQuery):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🐂 Buqani Semirtirish (Go'sht)", callback_data="type_buqa")],
+        [InlineKeyboardButton(text="🐄 Sigirning Sutini Oshirish", callback_data="type_sigir")]
+    ])
+    await callback.message.edit_text(
+        "<b>\"Tinchlik Yemxona\" Ratsion Kalkulyatori</b>\n\n"
+        "Moldingiz yo'nalishini tanlang:",
+        reply_markup=keyboard,
+        parse_mode="HTML"
     )
-    await message.forward(chat_id=ADMIN_ID)
-    await message.answer("✅ To'lov chekingiz adminga yuborildi! Tez orada tekshirib tasdiqlashadi.")
+    await callback.answer()
 
-# Serverdan buyurtmani qabul qilish
-async def handle_index(request):
-    return web.FileResponse('index.html')
+# 3. Vazn oralig'ini tanlash (Buqa uchun)
+@ration_router.callback_query(F.data == "type_buqa")
+async def buqa_weight(callback: CallbackQuery):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="300 kg gacha", callback_data="buqa_300_2mahal")],
+        [InlineKeyboardButton(text="350 - 400 kg", callback_data="buqa_400_2mahal")],
+        [InlineKeyboardButton(text="450 kg dan yuqori", callback_data="buqa_500_2mahal")]
+    ])
+    await callback.message.edit_text("Buqangizning taxminiy vaznini tanlang:", reply_markup=keyboard)
+    await callback.answer()
 
-async def handle_order(request):
-    try:
-        data = await request.json()
-        user_id = data.get('user_id')
-        user_name = data.get('user_name', 'Mijoz')
-        phone = data.get('phone')
-        items = data.get('items', [])
-        total = data.get('total', 0)
-        payment_type = data.get('payment_type', 'cash')
+# 4. Vazn oralig'ini tanlash (Sigir uchun)
+@ration_router.callback_query(F.data == "type_sigir")
+async def sigir_weight(callback: CallbackQuery):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="350 - 400 kg", callback_data="sigir_400_2mahal")],
+        [InlineKeyboardButton(text="450 - 500 kg", callback_data="sigir_500_2mahal")]
+    ])
+    await callback.message.edit_text("Sigiringizning taxminiy vaznini tanlang:", reply_markup=keyboard)
+    await callback.answer()
 
-        items_text = "\n".join([f"• {item['name']} - {item['qty']} {item['unit']} ({item['price']:,} so'mdan)" for item in items])
+# --- 5. NATIJA: 350-400 kg li Buqa uchun 2 mahalga bo'lingan ratsion ---
+@ration_router.callback_query(F.data == "buqa_400_2mahal")
+async def result_buqa_400_2mahal(callback: CallbackQuery):
+    text = (
+        "<b>🐂 350–400 kg Buqa uchun (2 Mahal) Ratsion</b>\n"
+        "<i>(MasterFeed va do'koningiz mahsulotlari asosida taqsimlandi)</i>\n\n"
         
-        if payment_type == 'card':
-            payment_text = (
-                f"💳 **To'lov turi:** Karta orqali\n"
-                f"📌 **Karta raqam:** `5614 6821 0937 9760` (Isayev Nodirjon)\n"
-                f"💰 **To'lanishi kerak:** {total:,} so'm\n\n"
-                f"⏳ *Iltimos, yuqoridagi kartaga to'lovni amalga oshiring va chek rasmini shu botga yuboring!*"
-            )
-        else:
-            payment_text = "💵 **To'lov turi:** Naqd pul (Yetkazib berilganda / Yemxonada)"
-
-        client_message = (
-            f"✅ **Buyurtmangiz muvaffaqiyatli qabul qilindi!**\n\n"
-            f"📦 **Sizning xaridlaringiz:**\n{items_text}\n\n"
-            f"💰 **Jami summa:** {total:,} so'm\n"
-            f"{payment_text}\n\n"
-            f"📞 **Telefon raqamingiz:** {phone}\n\n"
-            f"⏳ *Tez orada mutaxassisimiz yoki sotuvchi siz bilan bog'lanadi.* Xaridingiz uchun rahmat! 😊"
-        )
+        "🌅 <b>1-mahal (Ertalabki to'yintiruvchi ovqat):</b>\n"
+        "• Silyos: <b>8 kg</b>\n"
+        "• MasterFeed (Buqalar uchun): <b>2 kg</b>\n"
+        "• Kepak Motabar: <b>1.5 kg</b>\n"
+        "• Arpa (maydalangan): <b>1 kg</b>\n"
+        "• Mayda Tuz: <b>15-20 gramm</b>\n\n"
         
-        if user_id and user_id != 'unknown':
-            try:
-                await bot.send_message(chat_id=user_id, text=client_message, parse_mode="Markdown")
-            except Exception as e:
-                logging.error(f"Mijozga xabar yuborishda xatolik: {e}")
-
-        admin_payment_label = "💳 Karta orqali (Chek kutilmoqda)" if payment_type == 'card' else "💵 Naqd pul"
-        admin_message = (
-            f"🔔 **YANGI BUYURTMA KELDI!** 🚀\n\n"
-            f"👤 **Mijoz:** {user_name} (ID: `{user_id}`)\n"
-            f"📞 **Telefon:** {phone}\n"
-            f"💳 **To'lov turi:** {admin_payment_label}\n\n"
-            f"📋 **Mahsulotlar:**\n{items_text}\n\n"
-            f"💵 **Jami summa:** {total:,} so'm"
-        )
-        await bot.send_message(chat_id=ADMIN_ID, text=admin_message, parse_mode="Markdown")
-
-        return web.json_response({"status": "success"})
-    except Exception as e:
-        logging.error(f"Buyurtmani qayta ishlashda xatolik: {e}")
-        return web.json_response({"status": "error", "message": str(e)}, status=400)
-
-async def web_server():
-    app = web.Application()
-    app.router.add_get('/', handle_index)
-    app.router.add_post('/api/order', handle_order)
-    app.router.add_static('/', path='.', name='static')
-    
-    runner = web.AppRunner(app)
-    app_runner = await runner.setup()
-    port = int(os.environ.get("PORT", 10000))
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
-
-async def main():
-    dp.include_router(router)
-    await asyncio.gather(
-        dp.start_polling(bot),
-        web_server()
+        "🌙 <b>2-mahal (Kechki to'yintiruvchi ovqat):</b>\n"
+        "• Silyos: <b>7 kg</b>\n"
+        "• MasterFeed (Buqalar uchun): <b>1.5 kg</b>\n"
+        "• Kunjara: <b>1 kg</b>\n"
+        "• Kepak Motabar: <b>1 kg</b>\n\n"
+        
+        "🛒 <b>Ushbu mahsulotlarni sotib olish uchun buyurtma bering:</b>\n"
+        "👉 @tinchlik_yemxonaN1_bot"
     )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🛒 Shu mahsulotlarni sotib olish", url="https://t.me/tinchlik_yemxonaN1_bot")],
+        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="open_calc")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+    await callback.answer()
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(main())
+# --- 6. NATIJA: 450-500 kg li Sigir uchun 2 mahalga bo'lingan ratsion ---
+@ration_router.callback_query(F.data == "sigir_500_2mahal")
+async def result_sigir_500_2mahal(callback: CallbackQuery):
+    text = (
+        "<b>🐄 450–500 kg Sigir uchun Sut Ko'paytirish Ratsioni (2 Mahal)</b>\n"
+        "<i>(MasterFeed va do'koningiz mahsulotlari asosida taqsimlandi)</i>\n\n"
+        
+        "🌅 <b>1-mahal (Ertalabki sog'im oldidan):</b>\n"
+        "• Silyos: <b>8 kg</b>\n"
+        "• MasterFeed (Sigirlar uchun): <b>2.5 kg</b>\n"
+        "• Kepak Motabar: <b>1.5 kg</b>\n"
+        "• Arpa: <b>1 kg</b>\n"
+        "• Mayda Tuz: <b>20 gramm</b>\n\n"
+        
+        "🌙 <b>2-mahal (Kechqurun, sog'imdan keyin):</b>\n"
+        "• Silyos: <b>8 kg</b>\n"
+        "• MasterFeed (Sigirlar uchun): <b>2 kg</b>\n"
+        "• Kunjara: <b>1 kg</b>\n"
+        "• Raps Shrot: <b>0.5 kg</b>\n"
+        "• Vitamin tuz: <b>Berib boriladi</b>\n\n"
+        
+        "🛒 <b>Ushbu mahsulotlarni sotib olish uchun buyurtma bering:</b>\n"
+        "👉 @tinchlik_yemxonaN1_bot"
+    )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🛒 Shu mahsulotlarni sotib olish", url="https://t.me/tinchlik_yemxonaN1_bot")],
+        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="open_calc")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+    await callback.answer()
