@@ -1,4 +1,4 @@
- import logging
+import logging
 import asyncio
 from aiogram import Bot, Dispatcher, Router, F
 from aiogram.filters import Command
@@ -13,7 +13,7 @@ router = Router()
 
 WEBAPP_URL = "https://tinchlik-yemxona.onrender.com"
 
-# 1. Start komandasi
+# 1. Start komandasi (Kalkulyator va Katalog tugmalari bilan)
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
