@@ -12,14 +12,13 @@ from aiogram.types import (
     WebAppInfo,
 )
 
-# Sizning haqiqiy tokeningiz va Web App havolangiz
 TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE"
 WEB_APP_URL = "https://tinchlik-yemxona.onrender.com"
 
 router = Router()
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-# ----------------- ASOSIY MENYU (KEYBOARD) -----------------
+# ----------------- ASOSIY MENYU -----------------
 def get_main_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -30,7 +29,7 @@ def get_main_menu():
         resize_keyboard=True
     )
 
-# ----------------- START BUYrug'I -----------------
+# ----------------- START BUYRUG'I -----------------
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     welcome_text = (
@@ -84,12 +83,16 @@ async def shop_location(message: Message):
     address_text = (
         "📍 <b>'Tinchlik Yemxona' manzili va ma'lumotlari:</b>\n\n"
         "🏠 <b>Manzil:</b> Changtepa MFY\n"
-        "⏰ <b>Ish vaqti:</b> Har kuni 08:00 dan 19:00 gacha (Dam olish kunisiz)\n"
-        "📞 <b>Telefon raqam:</b> +998 (XX) XXX-XX-XX\n\n"
+        "⏰ <b>Ish vaqti:</b> Har kuni 08:00 dan 23:30 gacha (Dam olish kunisiz)\n"
+        "📞 <b>Telefon raqam:</b> +998 99 892 01 39\n\n"
         "<i>Do'konimiz joylashgan aniq lokatsiya:</i>"
     )
-    await message.answer(address_text, parse_mode="HTML")
-    # Siz yuborgan lokatsiya koordinatalari
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🗺️ Xaritadan ochish (Google Maps)", url="https://maps.app.goo.gl/7cBuzGdWhxWbTpiN8")]
+        ]
+    )
+    await message.answer(address_text, parse_mode="HTML", reply_markup=keyboard)
     await message.answer_location(latitude=41.1333, longitude=69.2667)
 
 # ----------------- 5. BIZ BILAN ALOQA -----------------
@@ -97,12 +100,13 @@ async def shop_location(message: Message):
 async def contact_us(message: Message):
     contact_text = (
         "📞 <b>Tezkor aloqa:</b>\n\n"
-        "Operatorimizga to'g'ridan-to'g'ri bog'lanish uchun quyidagi profilga yozing:\n\n"
-        "👤 Menedjer: @tinchlik_admin"
+        "Biz bilan bog'lanish uchun quyidagi raqamga qo'ng'iroq qiling yoki telegramdan yozing:\n\n"
+        "📱 <b>Telefon:</b> +998 99 892 01 39\n"
+        "👤 <b>Menedjer:</b> @tinchlik_admin"
     )
     await message.answer(contact_text, parse_mode="HTML")
 
-# ----------------- ASOSIY FUNKSIYA (MAIN) -----------------
+# ----------------- ASOSIY FUNKSIYA -----------------
 async def main():
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
