@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import sys
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F, Router
@@ -16,7 +17,7 @@ from aiogram.types import (
 # --- SOZLAMALAR ---
 TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE"
 WEB_APP_URL = "https://tinchlik-yemxona.onrender.com"
-PORT = 10000
+PORT = int(os.environ.get("PORT", 10000))
 
 router = Router()
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
