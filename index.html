@@ -270,7 +270,6 @@
             let paymentType = document.querySelector('input[name="paymentType"]:checked').value;
             let receiptInput = document.getElementById('receiptInput');
 
-            // Agar karta tanlangan bo'lsa, chek rasmi majburiy yuklanishi tekshiriladi
             if (paymentType === 'card' && receiptInput.files.length === 0) {
                 alert("Iltimos, karta orqali to'lov chekining rasmini yuklang!");
                 return;
