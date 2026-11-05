@@ -323,7 +323,6 @@ async def main():
     dp = Dispatcher()
     dp.include_router(router)
     
-    # Veb-server va botni bir vaqtning o'zida (parallel) ishga tushiramiz
     await web_server()
     print("Bot polling boshlandi...")
     await dp.start_polling(bot)
