@@ -85,7 +85,7 @@ async def shop_location(message: Message):
         "🏠 <b>Manzil:</b> Changtepa MFY\n"
         "⏰ <b>Ish vaqti:</b> Har kuni 08:00 dan 23:30 gacha (Dam olish kunisiz)\n"
         "📞 <b>Telefon raqam:</b> +998 99 892 01 39\n\n"
-        "<i>Do'konimiz joylashgan aniq lokatsiya:</i>"
+        "<i>Do'konimizga to'g'ridan-to'g'ri yo'nalish olish uchun pastdagi tugmani bosing:</i>"
     )
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -93,7 +93,6 @@ async def shop_location(message: Message):
         ]
     )
     await message.answer(address_text, parse_mode="HTML", reply_markup=keyboard)
-    await message.answer_location(latitude=41.1333, longitude=69.2667)
 
 # ----------------- 5. BIZ BILAN ALOQA -----------------
 @router.message(F.text == "📞 Biz bilan aloqa")
@@ -102,7 +101,7 @@ async def contact_us(message: Message):
         "📞 <b>Tezkor aloqa:</b>\n\n"
         "Biz bilan bog'lanish uchun quyidagi raqamga qo'ng'iroq qiling yoki telegramdan yozing:\n\n"
         "📱 <b>Telefon:</b> +998 99 892 01 39\n"
-        "👤 <b>Menedjer:</b> @tinchlik_admin"
+        "👤 <b>Menedjer:</b> @gofurov_df"
     )
     await message.answer(contact_text, parse_mode="HTML")
 
