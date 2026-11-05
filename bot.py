@@ -1,5 +1,7 @@
 import logging
 import asyncio
+import os
+from aiohttp import web
 from aiogram import Bot, Dispatcher, Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
@@ -60,7 +62,7 @@ async def back_to_start(callback: CallbackQuery):
     )
     await callback.answer()
 
-# --- 3. BUQA UCHUN VAZN TANLASH ---
+# --- BUQA UCHUN VAZN TANLASH ---
 @router.callback_query(F.data == "calc_buqa")
 async def buqa_weights(callback: CallbackQuery):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -71,7 +73,7 @@ async def buqa_weights(callback: CallbackQuery):
     await callback.message.edit_text("<b>🐂 Buqaning vaznini tanlang:</b>", reply_markup=keyboard, parse_mode="HTML")
     await callback.answer()
 
-# --- 4. SIGIR UCHUN VAZN TANLASH ---
+# --- SIGIR UCHUN VAZN TANLASH ---
 @router.callback_query(F.data == "calc_sigir")
 async def sigir_weights(callback: CallbackQuery):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -82,7 +84,7 @@ async def sigir_weights(callback: CallbackQuery):
     await callback.message.edit_text("<b>🐄 Sigirning vaznini tanlang:</b>", reply_markup=keyboard, parse_mode="HTML")
     await callback.answer()
 
-# --- 5. QO'Y UCHUN VAZN TANLASH ---
+# --- QO'Y UCHUN VAZN TANLASH ---
 @router.callback_query(F.data == "calc_qoy")
 async def qoy_weights(callback: CallbackQuery):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -189,11 +191,26 @@ async def res_qoy_50(callback: CallbackQuery):
     await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
     await callback.answer()
 
-# Ishga tushirish qismi
+# Render port talabini qondirish uchun oddiy veb-server
+async def handle(request):
+    return web.Response(text="Tinchlik Yemxona Bot is active!")
+
+async def web_server():
+    app = web.Application()
+    app.router.add_get("/", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+
 async def main():
     dp.include_router(router)
     await bot.delete_webhook(drop_pending_updates=True)
-    print("Bot ishga tushdi...")
+    
+    # Veb-server va botni bir vaqtning o'zida ishga tushirish
+    await web_server()
+    print("Bot va veb-server ishga tushdi...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
