@@ -1,7 +1,7 @@
 """Tinchlik Yemxona boti: ratsion kalkulyatori + katalog (mini app) + buyurtma qabul qilish.
 
 Render > Environment bo'limida kiritiladi:
-    BOT_TOKEN   (9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE)  BotFather bergan token
+    BOT_TOKEN   (9284978024:AAHtRWReqMMumubMPjX0_xZJ94scIHz-uoo)  BotFather bergan token
     ADMIN_ID    (8630108906) sotuvchi Telegram ID, bir nechta bo'lsa vergul bilan: 111,222
     WEBAPP_URL  (https://tinchlik-yemxona.onrender.com) katalog manzili
 """
@@ -27,7 +27,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
 log = logging.getLogger("yemxona")
 
 # ---------------- SOZLAMALAR ----------------
-TOKEN = os.environ["9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE"]
+TOKEN = os.environ["9284978024:AAHtRWReqMMumubMPjX0_xZJ94scIHz-uoo"]
 ADMIN_IDS = [int(x) for x in os.environ.get("ADMIN_ID", "8630108906").replace(" ", "").split(",") if x]
 WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://tinchlik-yemxona.onrender.com")
 BASE = os.path.dirname(os.path.abspath(__file__))
