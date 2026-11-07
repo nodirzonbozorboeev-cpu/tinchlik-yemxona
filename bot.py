@@ -1,9 +1,10 @@
-"""Tinchlik Yemxona boti: ratsion kalkulyatori + katalog (mini app) + buyurtma qabul qilish.
+"""Tinchlik Yemxona boti: katalog (mini app) + buyurtma qabul qilish + kunlik hisobot.
 
 Render > Environment bo'limida kiritiladi:
-    BOT_TOKEN   (9284978024:AAHtRWReqMMumubMPjX0_xZJ94scIHz-uoo)  BotFather bergan token
-    ADMIN_ID    (8630108906) sotuvchi Telegram ID, bir nechta bo'lsa vergul bilan: 111,222
-    WEBAPP_URL  (https://tinchlik-yemxona.onrender.com) katalog manzili
+    BOT_TOKEN    (majburiy)  BotFather bergan token
+    ADMIN_ID     (ixtiyoriy) sotuvchi Telegram ID, bir nechta bo'lsa vergul bilan: 111,222
+    WEBAPP_URL   (ixtiyoriy) katalog manzili
+    REPORT_HOUR  (ixtiyoriy) kunlik hisobot soati, Toshkent vaqti bilan (standart: 21)
 """
 import asyncio
 import hashlib
@@ -13,7 +14,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qsl
 
 from aiohttp import web
@@ -29,8 +30,11 @@ log = logging.getLogger("yemxona")
 # ---------------- SOZLAMALAR ----------------
 TOKEN = os.environ["BOT_TOKEN"]
 ADMIN_IDS = [int(x) for x in os.environ.get("ADMIN_ID", "8630108906").replace(" ", "").split(",") if x]
-WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://tinchlik-yemxona.onrender.com")
+WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://tinchlik-yemxona-1.onrender.com")
+REPORT_HOUR = int(os.environ.get("REPORT_HOUR", "21"))
 BASE = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.environ.get("DATA_FILE", os.path.join(BASE, "orders.json"))
+TZ = timezone(timedelta(hours=5))  # Toshkent (UTC+5)
 
 bot = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
@@ -40,124 +44,128 @@ fmt = lambda n: f"{int(n):,}".replace(",", " ")
 esc = lambda s: html.escape(str(s))
 
 
-# ---------------- RATSION MA'LUMOTLARI ----------------
-# Raqamlarni o'zgartirish uchun faqat shu qismni tahrirlang.
-ANIMALS = {
-    "buqa": ("🐂 Buqani Semirtirish (Go'sht)", "🐂 Buqaning vaznini tanlang:",
-             [("⚖️ 300 - 350 kg", "buqa_350"), ("⚖️ 400 - 450 kg", "buqa_450")]),
-    "sigir": ("🐄 Sigirning Sutini Oshirish", "🐄 Sigirning vaznini tanlang:",
-              [("⚖️ 350 - 400 kg", "sigir_400"), ("⚖️ 450 - 500 kg", "sigir_500")]),
-    "qoy": ("🐑 Qo'y va Sovliqlarni Boqish", "🐑 Qo'yning vaznini tanlang:",
-            [("⚖️ 40 - 50 kg", "qoy_50"), ("⚖️ 60 - 70 kg", "qoy_70")]),
+# ---------------- BUYURTMALAR OMBORI (JSON fayl) ----------------
+state = {"orders": [], "last_report": ""}
+
+
+def load_state():
+    try:
+        with open(DATA_FILE, encoding="utf-8") as f:
+            state.update(json.load(f))
+    except FileNotFoundError:
+        pass
+    except Exception:
+        log.exception("orders.json o'qilmadi, bo'sh holatdan boshlanadi")
+
+
+def save_state():
+    try:
+        tmp = DATA_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False)
+        os.replace(tmp, DATA_FILE)
+    except Exception:
+        log.exception("orders.json yozilmadi")
+
+
+def add_order(rec: dict):
+    cutoff = (datetime.now(TZ) - timedelta(days=90)).strftime("%Y-%m-%d")
+    state["orders"] = [o for o in state["orders"] if o["date"] >= cutoff] + [rec]
+    save_state()
+
+
+# ---------------- KUNLIK HISOBOT ----------------
+STATUS = {
+    "acc": ("✅ Qabul qilindi", "✅ Buyurtmangiz qabul qilindi. Tez orada yetkazib berish tashkil qilinadi."),
+    "way": ("🚚 Yo'lda", "🚚 Buyurtmangiz yo'lga chiqdi. Iltimos, telefoningiz yoningizda bo'lsin."),
+    "done": ("📦 Yetkazildi", "📦 Buyurtmangiz yetkazildi. Xaridingiz uchun rahmat! 🌾"),
+    "cancel": ("❌ Bekor qilindi", "❌ Buyurtmangiz bekor qilindi. Savollaringiz bo'lsa, sotuvchi bilan bog'laning."),
 }
-
-RATIONS = {
-    "buqa_450": ("🐂 400–450 kg Buqa Uchun Semirtirish Ratsioni (3 Mahal)", [
-        ("🌅 1-mahal (Ertalabki to'yintiruvchi ovqat)", [("Silyos", "8 kg"), ("MasterFeed (Buqalar uchun)", "2 kg"), ("Kepak (Motabar)", "1.5 kg"), ("Arpa (maydalangan)", "1 kg"), ("Mayda tuz", "20 gramm")]),
-        ("☀️ 2-mahal (Tushlik payti)", [("Silyos", "5 kg"), ("Kunjara", "1 kg"), ("Kepak", "0.5 kg")]),
-        ("🌙 3-mahal (Kechki to'yintiruvchi ovqat)", [("Silyos", "7 kg"), ("MasterFeed (Buqalar uchun)", "1.5 kg"), ("Arpa (maydalangan)", "1 kg"), ("Kunjara", "0.5 kg")]),
-    ]),
-    "buqa_350": ("🐂 300–350 kg Buqa Uchun Semirtirish Ratsioni (3 Mahal)", [
-        ("🌅 1-mahal (Ertalab)", [("Silyos", "6 kg"), ("MasterFeed", "1.5 kg"), ("Kepak", "1 kg"), ("Arpa", "0.8 kg"), ("Tuz", "15 gramm")]),
-        ("☀️ 2-mahal (Tushlik)", [("Silyos", "4 kg"), ("Kunjara", "0.7 kg"), ("Kepak", "0.3 kg")]),
-        ("🌙 3-mahal (Kechqurun)", [("Silyos", "5 kg"), ("MasterFeed", "1 kg"), ("Arpa", "0.7 kg"), ("Kunjara", "0.3 kg")]),
-    ]),
-    "sigir_500": ("🐄 450–500 kg Sigir Uchun Sut Oshirish Ratsioni (3 Mahal)", [
-        ("🌅 1-mahal (Ertalabki sog'imdan oldin)", [("Silyos", "8 kg"), ("MasterFeed (Sigirlar uchun)", "2.5 kg"), ("Kepak (Motabar)", "1.5 kg"), ("Arpa", "1 kg"), ("Mayda tuz", "20 gramm")]),
-        ("☀️ 2-mahal (Tushlik payti)", [("Silyos", "5 kg"), ("Kunjara", "0.5 kg"), ("Raps Shrot", "0.3 kg")]),
-        ("🌙 3-mahal (Kechqurun, sog'imdan keyin)", [("Silyos", "7 kg"), ("MasterFeed (Sigirlar uchun)", "2 kg"), ("Kepak", "1 kg"), ("Vitamin tuz", "10 gramm")]),
-    ]),
-    "sigir_400": ("🐄 350–400 kg Sigir Uchun Sut Oshirish Ratsioni (3 Mahal)", [
-        ("🌅 1-mahal (Ertalab)", [("Silyos", "7 kg"), ("MasterFeed", "2 kg"), ("Kepak", "1 kg"), ("Arpa", "0.8 kg"), ("Tuz", "15 gramm")]),
-        ("☀️ 2-mahal (Tushlik)", [("Silyos", "4 kg"), ("Kunjara", "0.4 kg")]),
-        ("🌙 3-mahal (Kechqurun)", [("Silyos", "6 kg"), ("MasterFeed", "1.5 kg"), ("Kepak", "0.8 kg"), ("Raps Shrot", "0.3 kg")]),
-    ]),
-    "qoy_70": ("🐑 60–70 kg Qo'y / Sovliq Uchun Semirtirish Ratsioni (3 Mahal)", [
-        ("🌅 1-mahal (Ertalab)", [("Silyos", "1.8 kg"), ("MasterFeed (Universal)", "0.5 kg"), ("Kepak", "0.3 kg"), ("Tuz", "5 gramm")]),
-        ("☀️ 2-mahal (Tushlik)", [("Silyos", "1.2 kg"), ("Arpa (maydalangan)", "0.3 kg"), ("Kunjara", "0.2 kg")]),
-        ("🌙 3-mahal (Kechqurun)", [("Silyos", "1.5 kg"), ("MasterFeed (Universal)", "0.4 kg"), ("Kepak", "0.3 kg")]),
-    ]),
-    "qoy_50": ("🐑 40–50 kg Qo'y / Sovliq Uchun Ratsion (3 Mahal)", [
-        ("🌅 1-mahal (Ertalab)", [("Silyos", "1.3 kg"), ("MasterFeed", "0.4 kg"), ("Kepak", "0.2 kg"), ("Tuz", "3 gramm")]),
-        ("☀️ 2-mahal (Tushlik)", [("Silyos", "0.8 kg"), ("Arpa", "0.2 kg"), ("Kunjara", "0.15 kg")]),
-        ("🌙 3-mahal (Kechqurun)", [("Silyos", "1.1 kg"), ("MasterFeed", "0.3 kg"), ("Kepak", "0.2 kg")]),
-    ]),
-}
+STATUS_LABEL = {"new": "🆕 Ko'rilmagan", **{k: v[0] for k, v in STATUS.items()}}
 
 
-def ration_text(key: str) -> str:
-    title, meals = RATIONS[key]
-    out = [f"<b>{title}</b>", "<i>(MasterFeed va do'konimiz mahsulotlari asosida tuzildi)</i>", ""]
-    for meal, items in meals:
-        out.append(f"<b>{meal}:</b>")
-        out += [f"• {n}: <b>{a}</b>" for n, a in items]
-        out.append("")
-    out.append("🛒 <b>Kerakli yem-hasaklarni buyurtma qiling:</b>")
-    return "\n".join(out)
+def build_report(day: str) -> str:
+    orders = [o for o in state["orders"] if o["date"] == day]
+    title = f"📊 <b>KUNLIK HISOBOT: {datetime.strptime(day, '%Y-%m-%d').strftime('%d.%m.%Y')}</b>"
+    if not orders:
+        return f"{title}\n\nBugun buyurtma bo'lmadi."
+
+    active = [o for o in orders if o["status"] != "cancel"]
+    cancelled = len(orders) - len(active)
+    total = sum(o["total"] for o in active)
+    cash = [o for o in active if o["pay"] == "cash"]
+    card = [o for o in active if o["pay"] == "card"]
+
+    lines = [title, "",
+             f"🧾 Buyurtmalar: <b>{len(orders)} ta</b>" + (f" (bekor qilingan: {cancelled})" if cancelled else ""),
+             f"💰 Jami savdo: <b>{fmt(total)} so'm</b>",
+             f"💵 Naqd: {len(cash)} ta — {fmt(sum(o['total'] for o in cash))} so'm",
+             f"💳 Karta: {len(card)} ta — {fmt(sum(o['total'] for o in card))} so'm",
+             "", "<b>Holatlar:</b>"]
+    for code, label in STATUS_LABEL.items():
+        n = sum(1 for o in orders if o["status"] == code)
+        if n:
+            lines.append(f"{label}: {n}")
+
+    prod = {}
+    for o in active:
+        for i in o["items"]:
+            k = (i["name"], i["unit"])
+            q, s = prod.get(k, (0, 0))
+            prod[k] = (q + i["qty"], s + i["sum"])
+    if prod:
+        lines += ["", "<b>🏆 Eng ko'p sotilgan:</b>"]
+        for (name, unit), (q, s) in sorted(prod.items(), key=lambda x: -x[1][1])[:5]:
+            lines.append(f"• {esc(name)} — {q:g} {esc(unit)} ({fmt(s)} so'm)")
+    return "\n".join(lines)
 
 
-# ---------------- KLAVIATURALAR ----------------
-def btn(text, data):
-    return InlineKeyboardButton(text=text, callback_data=data)
+async def report_scheduler():
+    """Har kuni REPORT_HOUR da (Toshkent vaqti) sotuvchilarga hisobot yuboradi."""
+    while True:
+        try:
+            now = datetime.now(TZ)
+            today = now.strftime("%Y-%m-%d")
+            if now.hour >= REPORT_HOUR and state["last_report"] != today:
+                text = build_report(today)
+                for admin in ADMIN_IDS:
+                    try:
+                        await bot.send_message(admin, text)
+                    except Exception:
+                        log.exception("Hisobotni yuborib bo'lmadi: %s", admin)
+                state["last_report"] = today
+                save_state()
+        except Exception:
+            log.exception("Hisobot rejalovchisida xato")
+        await asyncio.sleep(60)
 
 
-def catalog_btn(text="🛒 Tinchlik Yemxona Katalogi"):
-    return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=WEBAPP_URL))
-
-
-def main_kb():
+# ---------------- MIJOZ TOMONI ----------------
+def catalog_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [btn("🐂 Aqlli Ratsion Kalkulyatori (3 Mahal)", "open_calc")],
-        [catalog_btn()],
-    ])
+        [InlineKeyboardButton(text="🛒 Tinchlik Yemxona Katalogi", web_app=WebAppInfo(url=WEBAPP_URL))]])
 
 
 WELCOME = (
     "<b>Assalomu alaykum, hurmatli mijozimiz! 😊</b>\n\n"
     "\"Tinchlik Yemxona\" rasmiy botiga xush kelibsiz.\n\n"
-    "Moldingiz uchun 100% natija beradigan 3 mahal kundalik ratsionni hisoblash "
-    "yoki mahsulotlarni tanlab buyurtma berish uchun quyidagi tugmalardan foydalaning:"
+    "Chorvangiz uchun sifatli yem va oziqalarni katalogdan tanlang, "
+    "buyurtma bering, biz uyingizgacha yetkazib beramiz.\n\n"
+    "Boshlash uchun quyidagi tugmani bosing 👇"
 )
 
 
-# ---------------- MIJOZ TOMONI ----------------
 @router.message(Command("start"))
 async def cmd_start(m: Message):
-    await m.answer(WELCOME, reply_markup=main_kb())
+    await m.answer(WELCOME, reply_markup=catalog_kb())
 
 
-@router.callback_query(F.data == "back_to_start")
-async def back_to_start(cb: CallbackQuery):
-    await cb.message.edit_text(WELCOME, reply_markup=main_kb())
-    await cb.answer()
-
-
-@router.callback_query(F.data == "open_calc")
-async def open_calc(cb: CallbackQuery):
-    rows = [[btn(label, f"calc_{k}")] for k, (label, _, _) in ANIMALS.items()]
-    rows.append([btn("🔙 Orqaga", "back_to_start")])
-    await cb.message.edit_text(
-        "<b>🐂 \"Tinchlik Yemxona\" Ratsion Kalkulyatori</b>\n\n"
-        "Qaysi turdagi jonivor uchun ratsion hisoblamoqchisiz?",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
-    await cb.answer()
-
-
-@router.callback_query(F.data.in_({f"calc_{k}" for k in ANIMALS}))
-async def pick_weight(cb: CallbackQuery):
-    _, question, weights = ANIMALS[cb.data[5:]]
-    rows = [[btn(label, key)] for label, key in weights]
-    rows.append([btn("🔙 Orqaga", "open_calc")])
-    await cb.message.edit_text(f"<b>{question}</b>", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
-    await cb.answer()
-
-
-@router.callback_query(F.data.in_(set(RATIONS)))
-async def show_ration(cb: CallbackQuery):
-    back = f"calc_{cb.data.split('_')[0]}"
-    kb = InlineKeyboardMarkup(inline_keyboard=[[catalog_btn("🛒 Katalogdan sotib olish")], [btn("🔙 Orqaga", back)]])
-    await cb.message.edit_text(ration_text(cb.data), reply_markup=kb)
-    await cb.answer()
+@router.message(Command("hisobot"))
+async def cmd_report(m: Message):
+    """Sotuvchi istalgan payt bugungi hisobotni so'rashi mumkin."""
+    if m.from_user.id not in ADMIN_IDS:
+        return
+    await m.answer(build_report(datetime.now(TZ).strftime("%Y-%m-%d")))
 
 
 @router.message(F.photo)
@@ -176,14 +184,6 @@ async def receipt(m: Message):
 
 
 # ---------------- SOTUVCHI (ADMIN) TUGMALARI ----------------
-STATUS = {
-    "acc": ("✅ Qabul qilindi", "✅ Buyurtmangiz qabul qilindi. Tez orada yetkazib berish tashkil qilinadi."),
-    "way": ("🚚 Yo'lda", "🚚 Buyurtmangiz yo'lga chiqdi. Iltimos, telefoningiz yoningizda bo'lsin."),
-    "done": ("📦 Yetkazildi", "📦 Buyurtmangiz yetkazildi. Xaridingiz uchun rahmat! 🌾"),
-    "cancel": ("❌ Bekor qilindi", "❌ Buyurtmangiz bekor qilindi. Savollaringiz bo'lsa, sotuvchi bilan bog'laning."),
-}
-
-
 def admin_kb(uid, oid):
     b = lambda code: InlineKeyboardButton(text=STATUS[code][0], callback_data=f"st:{code}:{uid}:{oid}")
     return InlineKeyboardMarkup(inline_keyboard=[[b("acc"), b("way")], [b("done"), b("cancel")]])
@@ -198,6 +198,13 @@ async def set_status(cb: CallbackQuery):
         label, text = STATUS[code]
     except (ValueError, KeyError):
         return await cb.answer("Xatolik")
+
+    for o in reversed(state["orders"]):
+        if o["oid"] == oid:
+            o["status"] = code
+            save_state()
+            break
+
     base = cb.message.html_text.split("\n\n📌")[0]
     await cb.message.edit_text(f"{base}\n\n📌 Holat: <b>{label}</b>", reply_markup=cb.message.reply_markup)
     try:
@@ -209,7 +216,7 @@ async def set_status(cb: CallbackQuery):
 
 @router.message(F.text)
 async def fallback(m: Message):
-    await m.answer("Menyuni ochish uchun /start ni bosing 👇", reply_markup=main_kb())
+    await m.answer("Katalogni ochish uchun /start ni bosing 👇", reply_markup=catalog_kb())
 
 
 # ---------------- MINI APP BILAN ALOQA (BUYURTMA) ----------------
@@ -261,7 +268,8 @@ async def api_order(request: web.Request):
 
     card = d.get("payment_type") == "card"
     uid = user["id"]
-    oid = datetime.now().strftime("%d%H%M%S")
+    now = datetime.now(TZ)
+    oid = now.strftime("%d%H%M%S")
     total = sum(int(i["qty"] * i["price"]) for i in items)
     lines = [f"• {esc(i['name'])} — {i['qty']:g} {esc(i['unit'])} = <b>{fmt(i['qty'] * i['price'])}</b> so'm" for i in items]
     name = esc(((user.get("first_name") or "") + " " + (user.get("last_name") or "")).strip() or "Mijoz")
@@ -285,6 +293,13 @@ async def api_order(request: web.Request):
             log.exception("Adminga yuborib bo'lmadi: %s", admin)
     if not sent:
         return web.json_response({"status": "error", "message": "admin"}, status=502)
+
+    add_order({
+        "oid": oid, "date": now.strftime("%Y-%m-%d"), "ts": now.isoformat(timespec="seconds"),
+        "uid": uid, "total": total, "pay": "card" if card else "cash", "status": "new",
+        "items": [{"name": i["name"], "unit": i["unit"], "qty": i["qty"],
+                   "sum": int(i["qty"] * i["price"])} for i in items],
+    })
 
     try:
         extra = "\n\n📸 Karta orqali to'lagan bo'lsangiz, <b>chek rasmini shu yerga yuboring</b>." if card else ""
@@ -317,9 +332,10 @@ async def web_server():
 
 
 async def main():
+    load_state()
     dp.include_router(router)
     await bot.delete_webhook(drop_pending_updates=True)
-    await asyncio.gather(dp.start_polling(bot), web_server())
+    await asyncio.gather(dp.start_polling(bot), web_server(), report_scheduler())
 
 
 if __name__ == "__main__":
