@@ -27,7 +27,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
 log = logging.getLogger("yemxona")
 
 # ---------------- SOZLAMALAR ----------------
-TOKEN = os.environ["9284978024:AAHtRWReqMMumubMPjX0_xZJ94scIHz-uoo"]
+TOKEN = os.environ["BOT_TOKEN"]
 ADMIN_IDS = [int(x) for x in os.environ.get("ADMIN_ID", "8630108906").replace(" ", "").split(",") if x]
 WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://tinchlik-yemxona.onrender.com")
 BASE = os.path.dirname(os.path.abspath(__file__))
