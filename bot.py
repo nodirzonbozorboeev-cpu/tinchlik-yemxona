@@ -1,332 +1,327 @@
+"""Tinchlik Yemxona boti: ratsion kalkulyatori + katalog (mini app) + buyurtma qabul qilish.
+
+Render > Environment bo'limida kiritiladi:
+    BOT_TOKEN   (9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE)  BotFather bergan token
+    ADMIN_ID    (8630108906) sotuvchi Telegram ID, bir nechta bo'lsa vergul bilan: 111,222
+    WEBAPP_URL  (https://tinchlik-yemxona.onrender.com) katalog manzili
+"""
 import asyncio
+import hashlib
+import hmac
+import html
+import json
 import logging
 import os
-import sys
+import time
+from datetime import datetime
+from urllib.parse import parse_qsl
+
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F, Router
-from aiogram.filters import CommandStart
-from aiogram.types import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    KeyboardButton,
-    Message,
-    ReplyKeyboardMarkup,
-    WebAppInfo,
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.filters import Command
+from aiogram.types import (CallbackQuery, InlineKeyboardButton,
+                           InlineKeyboardMarkup, Message, WebAppInfo)
+
+log = logging.getLogger("yemxona")
+
+# ---------------- SOZLAMALAR ----------------
+TOKEN = os.environ["9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE"]
+ADMIN_IDS = [int(x) for x in os.environ.get("ADMIN_ID", "8630108906").replace(" ", "").split(",") if x]
+WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://tinchlik-yemxona.onrender.com")
+BASE = os.path.dirname(os.path.abspath(__file__))
+
+bot = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher()
+router = Router()
+
+fmt = lambda n: f"{int(n):,}".replace(",", " ")
+esc = lambda s: html.escape(str(s))
+
+
+# ---------------- RATSION MA'LUMOTLARI ----------------
+# Raqamlarni o'zgartirish uchun faqat shu qismni tahrirlang.
+ANIMALS = {
+    "buqa": ("🐂 Buqani Semirtirish (Go'sht)", "🐂 Buqaning vaznini tanlang:",
+             [("⚖️ 300 - 350 kg", "buqa_350"), ("⚖️ 400 - 450 kg", "buqa_450")]),
+    "sigir": ("🐄 Sigirning Sutini Oshirish", "🐄 Sigirning vaznini tanlang:",
+              [("⚖️ 350 - 400 kg", "sigir_400"), ("⚖️ 450 - 500 kg", "sigir_500")]),
+    "qoy": ("🐑 Qo'y va Sovliqlarni Boqish", "🐑 Qo'yning vaznini tanlang:",
+            [("⚖️ 40 - 50 kg", "qoy_50"), ("⚖️ 60 - 70 kg", "qoy_70")]),
+}
+
+RATIONS = {
+    "buqa_450": ("🐂 400–450 kg Buqa Uchun Semirtirish Ratsioni (3 Mahal)", [
+        ("🌅 1-mahal (Ertalabki to'yintiruvchi ovqat)", [("Silyos", "8 kg"), ("MasterFeed (Buqalar uchun)", "2 kg"), ("Kepak (Motabar)", "1.5 kg"), ("Arpa (maydalangan)", "1 kg"), ("Mayda tuz", "20 gramm")]),
+        ("☀️ 2-mahal (Tushlik payti)", [("Silyos", "5 kg"), ("Kunjara", "1 kg"), ("Kepak", "0.5 kg")]),
+        ("🌙 3-mahal (Kechki to'yintiruvchi ovqat)", [("Silyos", "7 kg"), ("MasterFeed (Buqalar uchun)", "1.5 kg"), ("Arpa (maydalangan)", "1 kg"), ("Kunjara", "0.5 kg")]),
+    ]),
+    "buqa_350": ("🐂 300–350 kg Buqa Uchun Semirtirish Ratsioni (3 Mahal)", [
+        ("🌅 1-mahal (Ertalab)", [("Silyos", "6 kg"), ("MasterFeed", "1.5 kg"), ("Kepak", "1 kg"), ("Arpa", "0.8 kg"), ("Tuz", "15 gramm")]),
+        ("☀️ 2-mahal (Tushlik)", [("Silyos", "4 kg"), ("Kunjara", "0.7 kg"), ("Kepak", "0.3 kg")]),
+        ("🌙 3-mahal (Kechqurun)", [("Silyos", "5 kg"), ("MasterFeed", "1 kg"), ("Arpa", "0.7 kg"), ("Kunjara", "0.3 kg")]),
+    ]),
+    "sigir_500": ("🐄 450–500 kg Sigir Uchun Sut Oshirish Ratsioni (3 Mahal)", [
+        ("🌅 1-mahal (Ertalabki sog'imdan oldin)", [("Silyos", "8 kg"), ("MasterFeed (Sigirlar uchun)", "2.5 kg"), ("Kepak (Motabar)", "1.5 kg"), ("Arpa", "1 kg"), ("Mayda tuz", "20 gramm")]),
+        ("☀️ 2-mahal (Tushlik payti)", [("Silyos", "5 kg"), ("Kunjara", "0.5 kg"), ("Raps Shrot", "0.3 kg")]),
+        ("🌙 3-mahal (Kechqurun, sog'imdan keyin)", [("Silyos", "7 kg"), ("MasterFeed (Sigirlar uchun)", "2 kg"), ("Kepak", "1 kg"), ("Vitamin tuz", "10 gramm")]),
+    ]),
+    "sigir_400": ("🐄 350–400 kg Sigir Uchun Sut Oshirish Ratsioni (3 Mahal)", [
+        ("🌅 1-mahal (Ertalab)", [("Silyos", "7 kg"), ("MasterFeed", "2 kg"), ("Kepak", "1 kg"), ("Arpa", "0.8 kg"), ("Tuz", "15 gramm")]),
+        ("☀️ 2-mahal (Tushlik)", [("Silyos", "4 kg"), ("Kunjara", "0.4 kg")]),
+        ("🌙 3-mahal (Kechqurun)", [("Silyos", "6 kg"), ("MasterFeed", "1.5 kg"), ("Kepak", "0.8 kg"), ("Raps Shrot", "0.3 kg")]),
+    ]),
+    "qoy_70": ("🐑 60–70 kg Qo'y / Sovliq Uchun Semirtirish Ratsioni (3 Mahal)", [
+        ("🌅 1-mahal (Ertalab)", [("Silyos", "1.8 kg"), ("MasterFeed (Universal)", "0.5 kg"), ("Kepak", "0.3 kg"), ("Tuz", "5 gramm")]),
+        ("☀️ 2-mahal (Tushlik)", [("Silyos", "1.2 kg"), ("Arpa (maydalangan)", "0.3 kg"), ("Kunjara", "0.2 kg")]),
+        ("🌙 3-mahal (Kechqurun)", [("Silyos", "1.5 kg"), ("MasterFeed (Universal)", "0.4 kg"), ("Kepak", "0.3 kg")]),
+    ]),
+    "qoy_50": ("🐑 40–50 kg Qo'y / Sovliq Uchun Ratsion (3 Mahal)", [
+        ("🌅 1-mahal (Ertalab)", [("Silyos", "1.3 kg"), ("MasterFeed", "0.4 kg"), ("Kepak", "0.2 kg"), ("Tuz", "3 gramm")]),
+        ("☀️ 2-mahal (Tushlik)", [("Silyos", "0.8 kg"), ("Arpa", "0.2 kg"), ("Kunjara", "0.15 kg")]),
+        ("🌙 3-mahal (Kechqurun)", [("Silyos", "1.1 kg"), ("MasterFeed", "0.3 kg"), ("Kepak", "0.2 kg")]),
+    ]),
+}
+
+
+def ration_text(key: str) -> str:
+    title, meals = RATIONS[key]
+    out = [f"<b>{title}</b>", "<i>(MasterFeed va do'konimiz mahsulotlari asosida tuzildi)</i>", ""]
+    for meal, items in meals:
+        out.append(f"<b>{meal}:</b>")
+        out += [f"• {n}: <b>{a}</b>" for n, a in items]
+        out.append("")
+    out.append("🛒 <b>Kerakli yem-hasaklarni buyurtma qiling:</b>")
+    return "\n".join(out)
+
+
+# ---------------- KLAVIATURALAR ----------------
+def btn(text, data):
+    return InlineKeyboardButton(text=text, callback_data=data)
+
+
+def catalog_btn(text="🛒 Tinchlik Yemxona Katalogi"):
+    return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=WEBAPP_URL))
+
+
+def main_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [btn("🐂 Aqlli Ratsion Kalkulyatori (3 Mahal)", "open_calc")],
+        [catalog_btn()],
+    ])
+
+
+WELCOME = (
+    "<b>Assalomu alaykum, hurmatli mijozimiz! 😊</b>\n\n"
+    "\"Tinchlik Yemxona\" rasmiy botiga xush kelibsiz.\n\n"
+    "Moldingiz uchun 100% natija beradigan 3 mahal kundalik ratsionni hisoblash "
+    "yoki mahsulotlarni tanlab buyurtma berish uchun quyidagi tugmalardan foydalaning:"
 )
 
-# --- SOZLAMALAR ---
-TOKEN = "9284978024:AAF3iLGeXEv7k_dBayVuzmhW1USZwDwxqRE"
-WEB_APP_URL = "https://tinchlik-yemxona.onrender.com"
-PORT = int(os.environ.get("PORT", 10000))
 
-router = Router()
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+# ---------------- MIJOZ TOMONI ----------------
+@router.message(Command("start"))
+async def cmd_start(m: Message):
+    await m.answer(WELCOME, reply_markup=main_kb())
 
-# --- HTML KATALOG SAHIFASI ---
-HTML_CATALOG = """<!DOCTYPE html>
-<html lang="uz">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tinchlik Yemxona Katalogi</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding-bottom: 90px; }
-        .navbar { background-color: #198754; color: white; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-        .product-price { color: #198754; font-weight: bold; font-size: 1.1rem; }
-        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding: 15px; z-index: 1000; border-top-left-radius: 16px; border-top-right-radius: 16px; }
-        .kg-input { width: 80px; text-align: center; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-dark px-3 py-3 shadow-sm">
-        <div class="container-fluid d-flex justify-content-between align-items-center">
-            <span class="navbar-brand mb-0 h1 fw-bold">🌾 Tinchlik Yemxona</span>
-            <span class="badge bg-light text-success fs-6 px-3 py-2" id="cartCountBadge">Savatcha: 0 ta</span>
-        </div>
-    </nav>
 
-    <div class="container mt-3">
-        <h5 class="mb-3 text-secondary fw-semibold">Barcha mahsulotlar:</h5>
-        <div class="row g-3" id="productList"></div>
-    </div>
+@router.callback_query(F.data == "back_to_start")
+async def back_to_start(cb: CallbackQuery):
+    await cb.message.edit_text(WELCOME, reply_markup=main_kb())
+    await cb.answer()
 
-    <div class="cart-bar d-none" id="cartBar">
-        <div class="container d-flex justify-content-between align-items-center">
-            <div>
-                <span class="text-muted d-block small">Jami summa:</span>
-                <span class="fs-5 fw-bold text-dark" id="cartTotalText">0 so'm</span>
-            </div>
-            <button class="btn btn-success px-4 py-2 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#checkoutModal">
-                🛒 Buyurtma berish
-            </button>
-        </div>
-    </div>
 
-    <div class="modal fade" id="checkoutModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 rounded-4 shadow">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title fw-bold">📋 Buyurtmani rasmiylashtirish</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="cartItemsSummary" class="mb-3 border-bottom pb-2 small text-muted"></div>
-                    <div class="mb-3">
-                        <label for="phoneInput" class="form-label fw-bold">Telefon raqamingiz:</label>
-                        <input type="tel" class="form-control" id="phoneInput" placeholder="+998 90 123 45 67" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">To'lov turini tanlang:</label>
-                        <div class="form-check p-3 border rounded-3 mb-2 bg-light">
-                            <input class="form-check-input" type="radio" name="paymentType" id="payCash" value="cash" onclick="toggleReceiptBox()" checked>
-                            <label class="form-check-label fw-semibold" for="payCash">💵 Naqd pul (Yemxonada / Yetkazilganda)</label>
-                        </div>
-                        <div class="form-check p-3 border rounded-3 bg-light">
-                            <input class="form-check-input" type="radio" name="paymentType" id="payCard" value="card" onclick="toggleReceiptBox()">
-                            <label class="form-check-label fw-semibold" for="payCard">💳 Karta orqali<br><span class="text-muted small">Karta: <code>5614 6821 0937 9760</code> (Isayev Nodirjon)</span></label>
-                        </div>
-                    </div>
-                    <div class="mb-3 d-none" id="receiptBox">
-                        <label for="receiptInput" class="form-label fw-bold text-danger">📸 To'lov chekini yuklash (Majburiy):</label>
-                        <input type="file" class="form-control" id="receiptInput" accept="image/*">
-                    </div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Bekor qilish</button>
-                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold" onclick="sendOrder()">Tasdiqlash va yuborish</button>
-                </div>
-            </div>
-        </div>
-    </div>
+@router.callback_query(F.data == "open_calc")
+async def open_calc(cb: CallbackQuery):
+    rows = [[btn(label, f"calc_{k}")] for k, (label, _, _) in ANIMALS.items()]
+    rows.append([btn("🔙 Orqaga", "back_to_start")])
+    await cb.message.edit_text(
+        "<b>🐂 \"Tinchlik Yemxona\" Ratsion Kalkulyatori</b>\n\n"
+        "Qaysi turdagi jonivor uchun ratsion hisoblamoqchisiz?",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    await cb.answer()
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
 
-        const products = [
-            { id: 1, name: "Kepak Motabar", unit: "qop (25kg)", price: 85000, type: "qop" },
-            { id: 2, name: "Kepak Mayda", unit: "qop (25kg)", price: 85000, type: "qop" },
-            { id: 3, name: "MasterFeed (Buqalar uchun)", unit: "qop (40kg)", price: 200000, type: "qop" },
-            { id: 4, name: "MasterFeed (Qoylar uchun)", unit: "qop (40kg)", price: 200000, type: "qop" },
-            { id: 5, name: "MasterFeed (Sigirlar uchun)", unit: "qop (40kg)", price: 225000, type: "qop" },
-            { id: 6, name: "MasterFeed (Quyonlar uchun)", unit: "kg", price: 6000, type: "kg" },
-            { id: 7, name: "MasterFeed (Bruler 1,2,3)", unit: "kg", price: 10000, type: "kg" },
-            { id: 8, name: "ArganicFeed (Buqa va Sigirlar uchun)", unit: "qop (40kg)", price: 175000, type: "qop" },
-            { id: 9, name: "Xusnidin Chorvador (Buqalar uchun)", unit: "qop (40kg)", price: 240000, type: "qop" },
-            { id: 10, name: "Silyos", unit: "qop (20kg)", price: 18000, type: "qop" },
-            { id: 11, name: "Kunjara", unit: "kg", price: 6500, type: "kg" },
-            { id: 12, name: "Raps Shrot", unit: "kg", price: 6000, type: "kg" },
-            { id: 13, name: "Mayda Tuz", unit: "pachka (1kg)", price: 2000, type: "kg" },
-            { id: 14, name: "Vitamin tuz", unit: "dona", price: 12000, type: "kg" },
-            { id: 15, name: "Makka Johori", unit: "kg", price: 4000, type: "kg" },
-            { id: 16, name: "Arpa", unit: "kg", price: 4000, type: "kg" },
-            { id: 17, name: "Bug'doy", unit: "kg", price: 4500, type: "kg" },
-            { id: 18, name: "555 Omuxta yem (Qoylar uchun)", unit: "kg", price: 5000, type: "kg" },
-            { id: 19, name: "555 Omuxta yem (Tovuqlar uchun)", unit: "kg", price: 5000, type: "kg" }
-        ];
+@router.callback_query(F.data.in_({f"calc_{k}" for k in ANIMALS}))
+async def pick_weight(cb: CallbackQuery):
+    _, question, weights = ANIMALS[cb.data[5:]]
+    rows = [[btn(label, key)] for label, key in weights]
+    rows.append([btn("🔙 Orqaga", "open_calc")])
+    await cb.message.edit_text(f"<b>{question}</b>", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    await cb.answer()
 
-        let cart = {};
 
-        function renderProducts() {
-            const listEl = document.getElementById('productList');
-            listEl.innerHTML = '';
-            products.forEach(p => {
-                let qty = cart[p.id] || 0;
-                let controlHtml = p.type === 'qop' 
-                    ? `<div class="d-flex align-items-center gap-2"><button class="btn btn-outline-success btn-sm px-2 py-1 rounded-circle fw-bold" onclick="updateQty(${p.id}, -1)">-</button><span class="fw-bold px-1" id="qty-${p.id}">${qty}</span><button class="btn btn-success btn-sm px-2 py-1 rounded-circle fw-bold" onclick="updateQty(${p.id}, 1)">+</button></div>`
-                    : `<div class="d-flex align-items-center gap-1"><input type="number" min="0" class="form-control form-control-sm kg-input" id="qty-${p.id}" value="${qty}" oninput="setKgQty(${p.id}, this.value)" placeholder="0"><span class="small text-muted">${p.unit}</span></div>`;
+@router.callback_query(F.data.in_(set(RATIONS)))
+async def show_ration(cb: CallbackQuery):
+    back = f"calc_{cb.data.split('_')[0]}"
+    kb = InlineKeyboardMarkup(inline_keyboard=[[catalog_btn("🛒 Katalogdan sotib olish")], [btn("🔙 Orqaga", back)]])
+    await cb.message.edit_text(ration_text(cb.data), reply_markup=kb)
+    await cb.answer()
 
-                listEl.innerHTML += `<div class="col-12"><div class="card p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-1 fw-bold text-dark">${p.name}</h6><span class="text-muted small">O'lchovi: ${p.unit}</span><div class="product-price mt-1">${p.price.toLocaleString()} so'm</div></div><div>${controlHtml}</div></div></div></div>`;
-            });
-        }
 
-        function updateQty(id, change) {
-            if (!cart[id]) cart[id] = 0;
-            cart[id] += change;
-            if (cart[id] < 0) cart[id] = 0;
-            if (cart[id] === 0) delete cart[id];
-            let el = document.getElementById(`qty-${id}`);
-            if (el) el.innerText = cart[id] || 0;
-            updateCartBar();
-        }
+@router.message(F.photo)
+async def receipt(m: Message):
+    """Mijoz to'lov chekini yuborsa, sotuvchiga uzatiladi."""
+    u = m.from_user
+    if u.id in ADMIN_IDS:
+        return
+    caption = f"🧾 <b>To'lov cheki</b>\n👤 <a href='tg://user?id={u.id}'>{esc(u.full_name)}</a>"
+    for admin in ADMIN_IDS:
+        try:
+            await bot.send_photo(admin, m.photo[-1].file_id, caption=caption)
+        except Exception:
+            log.exception("Chekni adminga yuborib bo'lmadi: %s", admin)
+    await m.answer("✅ Chekingiz qabul qilindi, rahmat!")
 
-        function setKgQty(id, value) {
-            let val = parseInt(value);
-            if (isNaN(val) || val <= 0) delete cart[id];
-            else cart[id] = val;
-            updateCartBar();
-        }
 
-        function toggleReceiptBox() {
-            let payCard = document.getElementById('payCard').checked;
-            let receiptBox = document.getElementById('receiptBox');
-            if (payCard) receiptBox.classList.remove('d-none');
-            else receiptBox.classList.add('d-none');
-        }
+# ---------------- SOTUVCHI (ADMIN) TUGMALARI ----------------
+STATUS = {
+    "acc": ("✅ Qabul qilindi", "✅ Buyurtmangiz qabul qilindi. Tez orada yetkazib berish tashkil qilinadi."),
+    "way": ("🚚 Yo'lda", "🚚 Buyurtmangiz yo'lga chiqdi. Iltimos, telefoningiz yoningizda bo'lsin."),
+    "done": ("📦 Yetkazildi", "📦 Buyurtmangiz yetkazildi. Xaridingiz uchun rahmat! 🌾"),
+    "cancel": ("❌ Bekor qilindi", "❌ Buyurtmangiz bekor qilindi. Savollaringiz bo'lsa, sotuvchi bilan bog'laning."),
+}
 
-        function updateCartBar() {
-            let totalCount = 0, totalPrice = 0, summaryHtml = '';
-            for (let id in cart) {
-                let p = products.find(prod => prod.id == id);
-                let count = cart[id];
-                totalCount += count;
-                let sum = count * p.price;
-                totalPrice += sum;
-                summaryHtml += `<div class="d-flex justify-content-between"><span>${p.name} (${count} ${p.unit})</span> <strong>${sum.toLocaleString()} so'm</strong></div>`;
-            }
-            const cartBar = document.getElementById('cartBar');
-            if (totalCount > 0) {
-                cartBar.classList.remove('d-none');
-                document.getElementById('cartCountBadge').innerText = `Savatcha: ${totalCount} ta`;
-                document.getElementById('cartTotalText').innerText = `${totalPrice.toLocaleString()} so'm`;
-                document.getElementById('cartItemsSummary').innerHTML = summaryHtml;
-            } else {
-                cartBar.classList.add('d-none');
-                document.getElementById('cartCountBadge').innerText = `Savatcha: 0 ta`;
-            }
-        }
 
-        function sendOrder() {
-            let phone = document.getElementById('phoneInput').value.trim();
-            if (!phone) { alert("Iltimos, telefon raqamingizni kiriting!"); return; }
-            let paymentType = document.querySelector('input[name="paymentType"]:checked').value;
-            let receiptInput = document.getElementById('receiptInput');
-            if (paymentType === 'card' && receiptInput.files.length === 0) {
-                alert("Iltimos, karta orqali to'lov chekining rasmini yuklang!"); return;
-            }
+def admin_kb(uid, oid):
+    b = lambda code: InlineKeyboardButton(text=STATUS[code][0], callback_data=f"st:{code}:{uid}:{oid}")
+    return InlineKeyboardMarkup(inline_keyboard=[[b("acc"), b("way")], [b("done"), b("cancel")]])
 
-            let cartItems = [];
-            let totalAmount = 0;
-            for (let id in cart) {
-                let p = products.find(prod => prod.id == id);
-                let qty = cart[id];
-                cartItems.push({ name: p.name, qty: qty, unit: p.unit, price: p.price });
-                totalAmount += qty * p.price;
-            }
 
-            fetch('/api/order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: tg.initDataUnsafe?.user?.id || 'unknown',
-                    user_name: tg.initDataUnsafe?.user?.first_name || 'Mijoz',
-                    phone: phone, items: cartItems, total: totalAmount, payment_type: paymentType
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    alert("Buyurtmangiz muvaffaqiyatli yuborildi!");
-                    tg.close();
-                } else { alert("Xatolik yuz berdi."); }
-            });
-        }
-
-        renderProducts();
-    </script>
-</body>
-</html>"""
-
-# --- WEB SERVER (Aiohttp) ---
-async def handle_index(request):
-    return web.Response(text=HTML_CATALOG, content_type='text/html')
-
-async def handle_order(request):
+@router.callback_query(F.data.startswith("st:"))
+async def set_status(cb: CallbackQuery):
+    if cb.from_user.id not in ADMIN_IDS:
+        return await cb.answer("Sizda ruxsat yo'q", show_alert=True)
     try:
-        data = await request.json()
-        print("Yangi buyurtma keldi:", data)
-        return web.json_response({"status": "success"})
-    except Exception as e:
-        return web.json_response({"status": "error", "message": str(e)})
+        _, code, uid, oid = cb.data.split(":")
+        label, text = STATUS[code]
+    except (ValueError, KeyError):
+        return await cb.answer("Xatolik")
+    base = cb.message.html_text.split("\n\n📌")[0]
+    await cb.message.edit_text(f"{base}\n\n📌 Holat: <b>{label}</b>", reply_markup=cb.message.reply_markup)
+    try:
+        await bot.send_message(int(uid), f"{text}\n\n<i>Buyurtma №{oid}</i>")
+        await cb.answer("Mijozga xabar yuborildi")
+    except Exception:
+        await cb.answer("Mijozga xabar yuborib bo'lmadi (botni bloklagan bo'lishi mumkin)", show_alert=True)
+
+
+@router.message(F.text)
+async def fallback(m: Message):
+    await m.answer("Menyuni ochish uchun /start ni bosing 👇", reply_markup=main_kb())
+
+
+# ---------------- MINI APP BILAN ALOQA (BUYURTMA) ----------------
+def verify_init_data(init_data: str):
+    """Telegram imzosini tekshiradi: faqat haqiqiy mini app foydalanuvchisi buyurtma bera oladi."""
+    try:
+        pairs = dict(parse_qsl(init_data, keep_blank_values=True))
+        got = pairs.pop("hash")
+        check = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
+        secret = hmac.new(b"WebAppData", TOKEN.encode(), hashlib.sha256).digest()
+        calc = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(calc, got):
+            return None
+        if time.time() - int(pairs.get("auth_date", 0)) > 2 * 86400:
+            return None
+        return json.loads(pairs["user"])
+    except Exception:
+        return None
+
+
+def clean_items(raw):
+    items = []
+    for i in list(raw)[:50]:
+        qty, price = float(i["qty"]), int(i["price"])
+        if not (0 < qty <= 100000 and 0 <= price <= 100_000_000):
+            raise ValueError("noto'g'ri miqdor yoki narx")
+        items.append({"name": str(i["name"])[:80], "unit": str(i["unit"])[:30], "qty": qty, "price": price})
+    if not items:
+        raise ValueError("savat bo'sh")
+    return items
+
+
+async def api_order(request: web.Request):
+    try:
+        d = await request.json()
+    except Exception:
+        return web.json_response({"status": "error"}, status=400)
+
+    user = verify_init_data(str(d.get("init_data", "")))
+    if not user:
+        return web.json_response({"status": "error", "message": "auth"}, status=403)
+    try:
+        items = clean_items(d["items"])
+        phone = str(d["phone"]).strip()[:25]
+        if not 9 <= sum(c.isdigit() for c in phone) <= 15:
+            raise ValueError("telefon")
+    except Exception:
+        return web.json_response({"status": "error", "message": "data"}, status=400)
+
+    card = d.get("payment_type") == "card"
+    uid = user["id"]
+    oid = datetime.now().strftime("%d%H%M%S")
+    total = sum(int(i["qty"] * i["price"]) for i in items)
+    lines = [f"• {esc(i['name'])} — {i['qty']:g} {esc(i['unit'])} = <b>{fmt(i['qty'] * i['price'])}</b> so'm" for i in items]
+    name = esc(((user.get("first_name") or "") + " " + (user.get("last_name") or "")).strip() or "Mijoz")
+    uname = f" (@{esc(user['username'])})" if user.get("username") else ""
+
+    text = (
+        f"🆕 <b>YANGI BUYURTMA №{oid}</b> (dastavka)\n\n"
+        f"👤 <a href='tg://user?id={uid}'>{name}</a>{uname}\n"
+        f"📞 Telefon: <b>{esc(phone)}</b>\n"
+        f"💳 To'lov: {'Karta (chek botga yuboriladi)' if card else 'Naqd pul'}\n\n"
+        + "\n".join(lines)
+        + f"\n\n💰 Jami: <b>{fmt(total)} so'm</b>\n\n"
+        "☎️ Mijozga qo'ng'iroq qilib manzilni aniqlang."
+    )
+    sent = 0
+    for admin in ADMIN_IDS:
+        try:
+            await bot.send_message(admin, text, reply_markup=admin_kb(uid, oid))
+            sent += 1
+        except Exception:
+            log.exception("Adminga yuborib bo'lmadi: %s", admin)
+    if not sent:
+        return web.json_response({"status": "error", "message": "admin"}, status=502)
+
+    try:
+        extra = "\n\n📸 Karta orqali to'lagan bo'lsangiz, <b>chek rasmini shu yerga yuboring</b>." if card else ""
+        await bot.send_message(
+            uid,
+            f"✅ <b>Buyurtmangiz qabul qilindi!</b> (№{oid})\n💰 Jami: <b>{fmt(total)} so'm</b>\n\n"
+            f"Tez orada sotuvchi siz bilan bog'lanib, manzilni so'raydi.{extra}")
+    except Exception:
+        log.warning("Mijozga tasdiq yuborib bo'lmadi: %s", uid)
+    return web.json_response({"status": "success", "order_id": oid})
+
+
+async def index(request: web.Request):
+    return web.FileResponse(os.path.join(BASE, "index.html"))
+
+
+async def health(request: web.Request):
+    return web.Response(text="ok")
+
 
 async def web_server():
-    app = web.Application()
-    app.router.add_get('/', handle_index)
-    app.router.add_post('/api/order', handle_order)
+    app = web.Application(client_max_size=1024 * 64)
+    app.router.add_get("/", index)
+    app.router.add_get("/health", health)
+    app.router.add_post("/api/order", api_order)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', PORT)
-    await site.start()
-    print(f"Veb-server {PORT}-portda ishga tushdi...")
+    await web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 10000))).start()
+    await asyncio.Event().wait()
 
-# --- TELEGRAM BOT BUYRUQLARI ---
-def get_main_menu():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🛒 Tinchlik Yemxona Katalogi")],
-            [KeyboardButton(text="🎁 VIP Xaridor shartlari"), KeyboardButton(text="💬 Fermerlar maslahatxonasi")],
-            [KeyboardButton(text="📍 Do'kon manzili va Ish vaqti"), KeyboardButton(text="📞 Biz bilan aloqa")]
-        ],
-        resize_keyboard=True
-    )
 
-@router.message(CommandStart())
-async def cmd_start(message: Message):
-    await message.answer(
-        f"Assalomu alaykum, <b>{message.from_user.full_name}</b>!\n\n"
-        "🌾 <b>'Tinchlik Yemxona'</b> rasmiy botiga xush kelibsiz.",
-        parse_mode="HTML",
-        reply_markup=get_main_menu()
-    )
-
-@router.message(F.text == "🛒 Tinchlik Yemxona Katalogi")
-async def open_catalog(message: Message):
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🛍️ Katalog ochish", web_app=WebAppInfo(url=WEB_APP_URL))]
-        ]
-    )
-    await message.answer("Katalogimizni ochish uchun pastdagi tugmani bosing:", reply_markup=keyboard)
-
-@router.message(F.text == "🎁 VIP Xaridor shartlari")
-async def vip_conditions(message: Message):
-    await message.answer(
-        "⭐ <b>'Tinchlik Yemxona' VIP Xaridor Dasturi</b>\n\n"
-        "Haftasiga <b>1,5 million so'mdan</b> ortiq tovar xarid qiling va VIP maqomini qo'lga kiriting!",
-        parse_mode="HTML"
-    )
-
-@router.message(F.text == "💬 Fermerlar maslahatxonasi")
-async def farmers_advice(message: Message):
-    await message.answer(
-        "💬 <b>Fermerlar maslahatxonasi</b>\n\n"
-        "Yem tanlash yoki parvarish qilish bo'yicha savollaringizni shu yerga yozib qoldiring!",
-        parse_mode="HTML"
-    )
-
-@router.message(F.text == "📍 Do'kon manzili va Ish vaqti")
-async def shop_location(message: Message):
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🗺️ Xaritadan ochish (Google Maps)", url="https://maps.app.goo.gl/7cBuzGdWhxWbTpiN8")]
-        ]
-    )
-    await message.answer(
-        "📍 <b>Manzil:</b> Changtepa MFY\n⏰ <b>Ish vaqti:</b> 08:00 – 23:30\n📞 <b>Tel:</b> +998 99 892 01 39",
-        parse_mode="HTML",
-        reply_markup=keyboard
-    )
-
-@router.message(F.text == "📞 Biz bilan aloqa")
-async def contact_us(message: Message):
-    await message.answer(
-        "📞 <b>Aloqa:</b>\n📱 Tel: +998 99 892 01 39\n👤 Menedjer: @gofurov_df",
-        parse_mode="HTML"
-    )
-
-# --- ASOSIY ISHGA TUSHIRISH ---
 async def main():
-    bot = Bot(token=TOKEN)
-    dp = Dispatcher()
     dp.include_router(router)
-    
-    await web_server()
-    print("Bot polling boshlandi...")
-    await dp.start_polling(bot)
+    await bot.delete_webhook(drop_pending_updates=True)
+    await asyncio.gather(dp.start_polling(bot), web_server())
+
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     asyncio.run(main())

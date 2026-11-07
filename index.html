@@ -286,6 +286,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    init_data: tg.initData,
                     user_id: tg.initDataUnsafe?.user?.id || 'unknown',
                     user_name: tg.initDataUnsafe?.user?.first_name || 'Mijoz',
                     phone: phone,
