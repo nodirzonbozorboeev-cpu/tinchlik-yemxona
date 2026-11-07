@@ -117,13 +117,11 @@
 
                     <!-- Karta tanlansa chiqadigan chek yuklash bo'limi -->
                     <div class="mb-3 d-none" id="receiptBox">
-                        <label for="receiptInput" class="form-label fw-bold text-danger">📸 To'lov chekini yuklash (Majburiy):</label>
-                        <input type="file" class="form-control" id="receiptInput" accept="image/*">
-                        <div class="form-text small">Iltimos, to'lov amalga oshirilgan chek rasmini yuklang.</div>
-                    </div>
+<div class="alert alert-warning small mb-0">📸 Karta orqali to'lagan bo'lsangiz, buyurtmadan keyin <b>chek rasmini shu botga yuboring</b>.</div>
+</div>
 
-                </div>
-                <div class="modal-footer border-0">
+</div>
+<div class="modal-footer border-0">
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Bekor qilish</button>
                     <button type="button" class="btn btn-success rounded-pill px-4 fw-bold" onclick="sendOrder()">Tasdiqlash va yuborish</button>
                 </div>
@@ -153,7 +151,7 @@
             { id: 12, name: "Raps Shrot", unit: "kg", price: 6000, type: "kg" },
             { id: 13, name: "Mayda Tuz", unit: "pachka (1kg)", price: 2000, type: "kg" },
             { id: 14, name: "Vitamin tuz", unit: "dona", price: 12000, type: "kg" },
-            { id: 15, name: "Makka Johori", unit: "kg", price: 4000, type: "kg" },
+            { id: 15, name: "Makka Jo'xori", unit: "kg", price: 4000, type: "kg" },
             { id: 16, name: "Arpa", unit: "kg", price: 4000, type: "kg" },
             { id: 17, name: "Bug'doy", unit: "kg", price: 4500, type: "kg" },
             { id: 18, name: "555 Omuxta yem (Qoylar uchun)", unit: "kg", price: 5000, type: "kg" },
@@ -268,12 +266,6 @@
             }
 
             let paymentType = document.querySelector('input[name="paymentType"]:checked').value;
-            let receiptInput = document.getElementById('receiptInput');
-
-            if (paymentType === 'card' && receiptInput.files.length === 0) {
-                alert("Iltimos, karta orqali to'lov chekining rasmini yuklang!");
-                return;
-            }
 
             let cartItems = [];
             let totalAmount = 0;
